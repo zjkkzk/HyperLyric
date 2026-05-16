@@ -26,7 +26,7 @@ internal object OpenAiTranslationClient {
         texts: List<String>
     ): List<TranslationItem>? = withContext(Dispatchers.IO) {
         if (configs.apiKey.isNullOrBlank()) {
-            xLogError("AITranslation : API: Request Aborted (API Key is missing)")
+            xLogError("AITranslation : API: 无法启动：未检测到 API Key，请在设置中配置")
             return@withContext null
         }
 
@@ -40,7 +40,7 @@ internal object OpenAiTranslationClient {
             }
         }
         if (requestItems.isEmpty()) {
-            Log.d(TAG, "Request skipped: no translatable lyric lines.")
+            Log.d(TAG, "跳过请求：没有需要翻译的行")
             return@withContext emptyList()
         }
 
@@ -63,7 +63,7 @@ internal object OpenAiTranslationClient {
         var connection: HttpURLConnection? = null
         try {
             val url = URL(apiUrl)
-            xLog("AITranslation : API: Post ${configs.model} -> $apiUrl")
+            xLog("AITranslation : API 请求：使用模型 ${configs.model}，地址 $apiUrl")
 
             connection = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
@@ -83,23 +83,23 @@ internal object OpenAiTranslationClient {
                 val responseBody = connection.inputStream.bufferedReader().use { it.readText() }
                 val responseObj = json.decodeFromString<OpenAiChatResponse>(responseBody)
                 val content = responseObj.choices.firstOrNull()?.message?.content ?: run {
-                    xLogError("AITranslation : API: Error (Empty content in choice)")
+                    xLogError("AITranslation : API 错误：AI 返回的内容为空")
                     return@withContext null
                 }
-                xLog("AITranslation : API: Success (Received content length=${content.length})")
+                xLog("AITranslation : API 成功：已接收到 AI 返回的数据")
                 AITranslationResponseParser.parse(content, requestIndices)
             } else {
-                val errorBody = connection.errorStream?.bufferedReader()?.use { it.readText() } ?: "No error body"
-                xLogError("AITranslation : API: Failed ($responseCode) -> ${errorBody.take(100)}")
+                val errorBody = connection.errorStream?.bufferedReader()?.use { it.readText() } ?: "无错误信息"
+                xLogError("AITranslation : API 错误 (代码 $responseCode)：请检查网络状态或 Key 余额")
                 null
             }
         } catch (e: CancellationException) {
             throw e
         } catch (_: EOFException) {
-            xLogWarn("AITranslation : API: Connection Closed (EOF)")
+            xLogWarn("AITranslation : API 异常：连接被意外关闭 (EOF)")
             null
         } catch (e: Exception) {
-            xLogError("AITranslation : API: Exception (${e.javaClass.simpleName})", e)
+            xLogError("AITranslation : 系统异常：网络请求出错 (${e.javaClass.simpleName})", e)
             null
         } finally {
             connection?.disconnect()

@@ -53,18 +53,18 @@ object AITranslator {
         configs: AiTranslationConfigs,
     ): Song {
         if (!configs.isUsable) {
-            xLogWarn("AITranslation : Request Skipped: Config unusable (Missing API Key or disabled).")
+            xLogWarn("AITranslation : 跳过翻译：配置不完整，API Key 或其他配置为空")
             return song
         }
         if (song.lyrics.isNullOrEmpty()) return song
 
-        xLog("AITranslation : Request: ${song.name} (${song.lyrics?.size ?: 0} lines)")
+        xLog("AITranslation : 正在翻译：${song.name}（共 ${song.lyrics?.size ?: 0} 行）")
         return try {
             translateSong(song, configs)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            xLogError("AI: Critical error during translateSongSync", e)
+            xLogError("AITranslation : 翻译过程发生错误", e)
             song
         }
     }
@@ -76,7 +76,7 @@ object AITranslator {
     ): List<TranslationItem>? = OpenAiTranslationClient.request(configs, song, texts)
 
     fun clearCache(callback: () -> Unit) {
-        xLog("AI: Clearing all translation caches (Memory & DB)...")
+        xLog("AITranslation : 清理记录：正在清空所有本地翻译记录（内存+数据库）")
         scheduler.cancelPending()
         cache.clear(callback)
     }
@@ -87,20 +87,20 @@ object AITranslator {
         val songContentId = AITranslationKey.calculate(configs, song, originalLines)
 
         cache.getFromMemory(songContentId)?.let {
-            xLog("AITranslation : Cache: Memory Hit for ${song.name}")
+            xLog("AITranslation : 缓存命中：从内存加载了 ${song.name} 的翻译")
             return AITranslationApplicator.apply(song, it)
         }
 
         cache.getFromDb(songContentId)?.let {
-            xLog("AITranslation : Cache: Database Hit for ${song.name}")
+            xLog("AITranslation : 记录命中：从本地存储加载了 ${song.name} 的翻译")
             cache.putMemory(songContentId, it)
             return AITranslationApplicator.apply(song, it)
         }
 
-        xLog("AITranslation : Cache: Miss. Waiting for API translation...")
+        xLog("AITranslation : 正在请求 AI：本地无记录，准备发起在线翻译")
         val apiResults = scheduler.getOrEnqueue(songContentId, configs, song, originalLines).await()
         if (apiResults.isNullOrEmpty()) {
-            xLogWarn("AITranslation : Outcome: Failed to get translation for ${song.name}")
+            xLogWarn("AITranslation : 翻译失败：未能获取到 ${song.name} 的 AI 翻译")
             return song
         }
         return AITranslationApplicator.apply(song, apiResults)

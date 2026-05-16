@@ -29,15 +29,15 @@ object UnlockFocusWhitelist {
             if (method != null) {
                 module.deoptimize(method)
                 module.hook(method).intercept(PluginLoadHooker())
-                xLog("ModuleInit : Whitelist -> PluginInstance.loadPlugin hooked")
+                xLog("ModuleInit : 插件拦截器已就绪 (PluginInstance)")
             } else {
-                xLogWarn("ModuleInit : Whitelist -> PluginInstance.loadPlugin not found")
+                xLogWarn("ModuleInit : 未找到 PluginInstance.loadPlugin")
             }
         }.onFailure { e ->
             if (e is ClassNotFoundException) {
-                xLogWarn("ModuleInit : Whitelist -> $PLUGIN_INSTANCE_CLASS not found")
+                xLogWarn("ModuleInit : $PLUGIN_INSTANCE_CLASS 未找到")
             } else {
-                xLogError("ModuleInit : Whitelist -> ERROR: Failed to hook PluginInstance", e)
+                xLogError("ModuleInit : 拦截 PluginInstance 时发生错误", e)
             }
         }
 
@@ -60,11 +60,11 @@ object UnlockFocusWhitelist {
                     module.deoptimize(method)
                     module.hook(method).intercept(ReturnTrueHooker())
                 }
-                xLog("ModuleInit : Whitelist -> Focus whitelist unlocked (${methods.joinToString { it.name }})")
+                xLog("ModuleInit : 成功移除焦点通知白名单 (${methods.joinToString { it.name }})")
             }
         }.onFailure { e ->
             if (e !is ClassNotFoundException) {
-                xLogError("ModuleInit : Whitelist -> ERROR: Focus whitelist target hook failed in $cl", e)
+                xLogError("ModuleInit : 焦点通知白名单注入失败 ($cl)", e)
             }
         }
 
@@ -76,11 +76,11 @@ object UnlockFocusWhitelist {
             if (method != null) {
                 module.deoptimize(method)
                 module.hook(method).intercept(AuthResultHooker())
-                xLog("ModuleInit : Whitelist -> Focus whitelist auth callback hooked")
+                xLog("ModuleInit : 焦点白名单授权回调注入成功")
             }
         }.onFailure { e ->
             if (e !is ClassNotFoundException) {
-                xLogError("ModuleInit : Whitelist -> ERROR: Focus whitelist auth hook failed in $cl", e)
+                xLogError("ModuleInit : 焦点白名单授权注入失败 ($cl)", e)
             }
         }
     }
