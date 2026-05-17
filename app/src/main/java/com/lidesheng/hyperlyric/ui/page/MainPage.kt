@@ -474,6 +474,7 @@ fun MainPage() {
         show = showPermissionSheet,
         title = stringResource(R.string.sheet_permission_title),
         allowDismiss = false,
+        backgroundColor = MiuixTheme.colorScheme.surface,
         startAction = {
             IconButton(onClick = { showPermissionSheet = false }) {
                 Icon(
@@ -510,7 +511,7 @@ fun MainPage() {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 24.dp)
+                    .padding(bottom = 40.dp)
             ) {
                 Card(modifier = Modifier.padding(horizontal = 12.dp).fillMaxWidth()) {
                     ArrowPreference(
