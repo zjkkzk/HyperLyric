@@ -23,20 +23,22 @@ object LogManager {
             findProcess.waitFor()
 
             if (foundDirs.isEmpty()) {
-                entries.add(LogEntry("NOW", "W", context.getString(R.string.tag_logger), context.getString(R.string.lsposed_not_found)))
+                val msg = context.getString(R.string.lsposed_not_found)
+                entries.add(LogEntry("NOW", "W", context.getString(R.string.tag_logger), msg, rawLog = msg))
                 return@withContext entries
             }
 
             val dirsArg = foundDirs.joinToString(" ")
             val listProcess = Runtime.getRuntime().exec(
-                arrayOf("su", "-c", "find $dirsArg -name '*.log' -type f 2>/dev/null")
+                arrayOf("su", "-c", "find $dirsArg -name '*.log' ! -name 'kmsg*' -type f 2>/dev/null")
             )
             val logFiles = BufferedReader(InputStreamReader(listProcess.inputStream))
                 .readLines().filter { it.isNotBlank() }
             listProcess.waitFor()
 
             if (logFiles.isEmpty()) {
-                entries.add(LogEntry("NOW", "W", context.getString(R.string.tag_logger), context.getString(R.string.format_log_files_not_found, dirsArg)))
+                val msg = context.getString(R.string.format_log_files_not_found, dirsArg)
+                entries.add(LogEntry("NOW", "W", context.getString(R.string.tag_logger), msg, rawLog = msg))
                 return@withContext entries
             }
 
@@ -47,6 +49,8 @@ object LogManager {
 
             val timeRegex = Pattern.compile("^(?:\\[\\s*)?(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}|\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2}\\.\\d{3}|\\d+\\.\\d{6})")
             val levelRegex = Pattern.compile("\\s+([VDIWEC])/")
+            val lsposedRegex = Pattern.compile("\\(([^)]+)\\)\\[([^,\\]]+)")
+            val processRegex = Pattern.compile("\\(([^)]+)\\)")
 
             BufferedReader(InputStreamReader(process.inputStream)).use { reader ->
                 val currentBlock = java.lang.StringBuilder()
@@ -54,10 +58,12 @@ object LogManager {
                 fun processCurrentBlock() {
                     val blockStr = currentBlock.toString()
                     val isHyperLyric = blockStr.contains("hyperlyric", ignoreCase = true) || blockStr.contains("HyperLyric")
-                    val isSystemUiCrash = blockStr.contains("systemui", ignoreCase = true) && 
+                    val isSystemUi = blockStr.contains("systemui", ignoreCase = true) || blockStr.contains("SystemUI")
+                    val isLyricon = blockStr.contains("io.github.proify.lyricon", ignoreCase = true)
+                    val isSystemUiCrash = isSystemUi && 
                                           (blockStr.contains("crash", ignoreCase = true) || blockStr.contains("fatal exception", ignoreCase = true))
 
-                    if (isHyperLyric || isSystemUiCrash) {
+                    if (isHyperLyric || isSystemUi || isLyricon) {
                         val firstLine = blockStr.lineSequence().firstOrNull() ?: ""
 
                         val timeMatcher = timeRegex.matcher(firstLine)
@@ -93,8 +99,21 @@ object LogManager {
                             headerMsg
                         }
 
-                        val tag = if (isSystemUiCrash && !isHyperLyric) context.getString(R.string.tag_logger) else context.getString(R.string.tag_lsposed)
-                        entries.add(LogEntry(time, level, tag, finalMsg.trim()))
+                        val lsposedMatcher = lsposedRegex.matcher(firstLine)
+                        val source = if (lsposedMatcher.find()) {
+                            lsposedMatcher.group(2) ?: "com.lidesheng.hyperlyric"
+                        } else {
+                            val processMatcher = processRegex.matcher(firstLine)
+                            if (processMatcher.find()) {
+                                processMatcher.group(1) ?: "com.lidesheng.hyperlyric"
+                            } else if (isSystemUi) {
+                                "com.android.systemui"
+                            } else {
+                                "com.lidesheng.hyperlyric"
+                            }
+                        }
+                        val tag = if (isSystemUi && !isHyperLyric && !isLyricon) context.getString(R.string.tag_logger) else context.getString(R.string.tag_lsposed)
+                        entries.add(LogEntry(time, level, tag, finalMsg.trim(), source = source, rawLog = blockStr))
                     }
                 }
 
@@ -115,8 +134,8 @@ object LogManager {
             process.waitFor()
 
             if (entries.isEmpty()) {
-                entries.add(LogEntry("NOW", "I", context.getString(R.string.tag_logger),
-                    context.getString(R.string.format_logs_scanned_no_match, logFiles.size, dirsArg)))
+                val msg = context.getString(R.string.format_logs_scanned_no_match, logFiles.size, dirsArg)
+                entries.add(LogEntry("NOW", "I", context.getString(R.string.tag_logger), msg, rawLog = msg))
             }
         } catch (e: Exception) {
             val msg = if (e.message?.contains("Permission denied") == true ||
@@ -126,7 +145,7 @@ object LogManager {
             } else {
                 context.getString(R.string.format_log_read_failed, e.message)
             }
-            entries.add(LogEntry("NOW", "E", context.getString(R.string.tag_logger), msg))
+            entries.add(LogEntry("NOW", "E", context.getString(R.string.tag_logger), msg, rawLog = msg))
         }
         entries.sortedByDescending { it.timestamp }
     }

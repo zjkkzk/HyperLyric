@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -95,8 +96,17 @@ data class LogEntry(
     val level: String,
     val tag: String,
     val message: String,
-    val isSystemInfo: Boolean = false
+    val isSystemInfo: Boolean = false,
+    val source: String = "com.lidesheng.hyperlyric",
+    val rawLog: String = ""
 ) {
+    val displaySource: String
+        get() = when {
+            source == "com.lidesheng.hyperlyric" -> "HyperLyric"
+            source.contains("systemui", ignoreCase = true) -> "SystemUI"
+            source.startsWith("io.github.proify.lyricon.") -> source.substringAfterLast('.')
+            else -> source
+        }
     val displayLevel: String
         get() = when (level) {
             "C" -> "CRASH"
@@ -207,8 +217,7 @@ fun LogPage() {
                     sb.appendLine()
                     val logsToExport = filteredLogs.toList()
                     logsToExport.forEach {
-                        sb.appendLine("[${it.timestamp}][${it.level}][${it.tag}]")
-                        sb.appendLine(it.message)
+                        sb.appendLine(it.rawLog)
                         sb.appendLine()
                     }
                     val output = context.contentResolver.openOutputStream(uri)
@@ -424,9 +433,8 @@ fun LogItem(
         showIndication = true,
         onClick = { expanded = !expanded },
         onLongPress = {
-            val logText = "[${entry.timestamp}][${entry.level}][${entry.tag}]\n${entry.message}"
             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            val clip = ClipData.newPlainText("HyperLyric Log", logText)
+            val clip = ClipData.newPlainText("HyperLyric Log", entry.rawLog)
             clipboard.setPrimaryClip(clip)
             scope.launch {
                 snackbarHostState.showSnackbar(
@@ -444,11 +452,18 @@ fun LogItem(
             ) {
                 Text(
                     text = entry.displayLevel,
-                    fontSize = 9.sp,
+                    fontSize = 8.sp,
                     fontWeight = FontWeight.Bold,
                     color = entry.levelColorText
                 )
             }
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = entry.displaySource,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = MiuixTheme.colorScheme.onSurface
+            )
             Spacer(Modifier.weight(1f))
             Text(
                 text = formatTimestamp(entry.timestamp),
