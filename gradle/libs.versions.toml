@@ -22,6 +22,7 @@ daimajia-animations = "2.4"
 daimajia-easing = "2.4"
 hiddenapibypass = "4.3"
 shizuku = "13.1.5"
+superlyricapi = "3.4"
 
 
 [libraries]
@@ -70,6 +71,9 @@ retrofit2-kotlinx-serialization-converter = { group = "com.jakewharton.retrofit"
 # --- Xposed ---
 libxposed-api = { group = "io.github.libxposed", name = "api", version.ref = "libxposed" }
 libxposed-service = { group = "io.github.libxposed", name = "service", version.ref = "libxposed" }
+
+# --- SuperLyric ---
+superlyricapi = { group = "com.github.HChenX", name = "SuperLyricApi", version.ref = "superlyricapi" }
 
 # --- 动画库 (YoYo) ---
 daimajia-animations = { group = "com.daimajia.androidanimations", name = "library", version.ref = "daimajia-animations" }

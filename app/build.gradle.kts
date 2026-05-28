@@ -84,6 +84,9 @@ dependencies {
     compileOnly(libs.libxposed.api)
     implementation(libs.libxposed.service)
 
+    // SuperLyric API
+    implementation(libs.superlyricapi)
+
     // --- 布局兼容 ---
     implementation(libs.androidx.constraintlayout)
 

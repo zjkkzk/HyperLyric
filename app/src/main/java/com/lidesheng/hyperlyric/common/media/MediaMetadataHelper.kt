@@ -45,6 +45,20 @@ object MediaMetadataHelper {
     }
 
     /**
+     * 获取指定包名的当前播放位置（毫秒）。未播放或无控制器时返回 -1。
+     */
+    fun getPlaybackPosition(context: Context, packageName: String): Long {
+        if (packageName.isEmpty()) return -1
+        return try {
+            val msm = context.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
+            val controller = msm.getActiveSessions(null).find { it.packageName == packageName }
+            controller?.playbackState?.position ?: -1
+        } catch (_: Exception) {
+            -1
+        }
+    }
+
+    /**
      * 扩展方法：多级兜底提取封面
      * 优先级：ALBUM_ART > ART > DISPLAY_ICON
      */

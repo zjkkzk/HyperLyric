@@ -1,0 +1,194 @@
+package com.lidesheng.hyperlyric.root.source
+
+import com.hchen.superlyricapi.ISuperLyricReceiver
+import com.hchen.superlyricapi.SuperLyricData
+import com.hchen.superlyricapi.SuperLyricHelper
+import com.hchen.superlyricapi.SuperLyricLine
+import com.hchen.superlyricapi.SuperLyricWord
+import com.lidesheng.hyperlyric.lyric.source.LyricSink
+import com.lidesheng.hyperlyric.lyric.source.LyricSource
+import com.lidesheng.hyperlyric.common.media.MediaMetadataHelper
+import com.lidesheng.hyperlyric.root.utils.HookLogger
+import io.github.proify.lyricon.lyric.model.LyricWord
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import io.github.proify.lyricon.lyric.model.RichLyricLine
+
+class SuperLyricSource : LyricSource {
+
+    override val id = "superlyric"
+    override val displayName = "SuperLyric (逐行歌词)"
+
+    private var app: android.app.Application? = null
+    private var sink: LyricSink? = null
+    private var receiver: ISuperLyricReceiver? = null
+    private var positionJob: Job? = null
+    private val positionScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
+    fun initialize(app: android.app.Application) {
+        this.app = app
+    }
+
+    override fun isAvailable(): Boolean = try {
+        val available = SuperLyricHelper.isAvailable()
+        HookLogger.i(TAG, "isAvailable = $available")
+        available
+    } catch (e: Exception) {
+        HookLogger.w(TAG, "isAvailable 检查失败: ${e.message}")
+        false
+    }
+
+    override fun start(sink: LyricSink) {
+        this.sink = sink
+
+        // 先检查 SuperLyric 系统服务是否可用
+        val available = try {
+            SuperLyricHelper.isAvailable()
+        } catch (e: Exception) {
+            HookLogger.e(TAG, "start : SuperLyric 服务不可用（未安装 SuperLyric 模块？）", e)
+            false
+        }
+        if (!available) {
+            HookLogger.e(TAG, "start : SuperLyric 服务未就绪，接收端注册跳过")
+            return
+        }
+
+        val stub = object : ISuperLyricReceiver.Stub() {
+            override fun onLyric(publisher: String, data: SuperLyricData) {
+                android.util.Log.d("SuperLyricSource", "★ onLyric RAW: publisher=$publisher hasLyric=${data.hasLyric()}")
+                try {
+                    handleLyric(publisher, data)
+                } catch (e: Exception) {
+                    HookLogger.w(TAG, "onLyric : 处理歌词数据失败", e)
+                }
+            }
+
+            override fun onStop(publisher: String, data: SuperLyricData) {
+                android.util.Log.d("SuperLyricSource", "★ onStop RAW: publisher=$publisher")
+                HookLogger.d(TAG, "onStop : 收到停止事件, publisher=$publisher")
+                sink.onPlaybackStateChanged(false)
+                stopPositionPolling()
+            }
+        }
+        receiver = stub
+
+        try {
+            SuperLyricHelper.registerReceiver(stub)
+            val registered = SuperLyricHelper.isReceiverRegistered(stub)
+            HookLogger.i(TAG, "start : 接收端注册${if (registered) "成功" else "失败"}")
+        } catch (e: Exception) {
+            HookLogger.e(TAG, "start : 接收端注册异常", e)
+        }
+    }
+
+    override fun stop() {
+        stopPositionPolling()
+        receiver?.let {
+            try {
+                SuperLyricHelper.unregisterReceiver(it)
+            } catch (e: Exception) {
+                HookLogger.w(TAG, "stop : 注销接收端失败", e)
+            }
+        }
+        receiver = null
+        sink = null
+        HookLogger.i(TAG, "stop : 数据源已停止")
+    }
+
+    private fun handleLyric(publisher: String, data: SuperLyricData) {
+        val currentSink = sink ?: return
+
+        // 无实际数据（如拖动进度条时的 BUFFERING 状态），忽略
+        val hasContent = data.hasLyric() || data.hasTitle() || data.hasArtist() || data.hasAlbum()
+        if (!hasContent) return
+
+        currentSink.onPlaybackStateChanged(true)
+
+        if (data.hasTitle() || data.hasArtist() || data.hasAlbum()) {
+            currentSink.onMetadata(
+                if (data.hasTitle()) data.title else null,
+                if (data.hasArtist()) data.artist else null,
+                if (data.hasAlbum()) data.album else null,
+                publisher
+            )
+        }
+
+        if (data.hasLyric()) {
+            val lyric = data.lyric
+            if (lyric != null) {
+                val richLine = convertToRichLyricLine(lyric, data)
+                currentSink.onLyricLine(richLine)
+                startPositionPolling(publisher)
+            }
+        }
+    }
+
+    private fun convertToRichLyricLine(line: SuperLyricLine, data: SuperLyricData): RichLyricLine {
+        val words = line.words?.map { word ->
+            LyricWord(
+                begin = word.startTime,
+                end = word.endTime,
+                text = word.word
+            )
+        }
+
+        val translationText = if (data.hasTranslation()) data.translation?.text else null
+        val translationWords = if (data.hasTranslation()) {
+            data.translation?.words?.map { word ->
+                LyricWord(
+                    begin = word.startTime,
+                    end = word.endTime,
+                    text = word.word
+                )
+            }
+        } else null
+
+        val secondaryText = if (data.hasSecondary()) data.secondary?.text else null
+        val secondaryWords = if (data.hasSecondary()) {
+            data.secondary?.words?.map { word ->
+                LyricWord(
+                    begin = word.startTime,
+                    end = word.endTime,
+                    text = word.word
+                )
+            }
+        } else null
+
+        return RichLyricLine(
+            begin = line.startTime,
+            end = line.endTime,
+            text = line.text,
+            words = words,
+            translation = translationText,
+            translationWords = translationWords,
+            secondary = secondaryText,
+            secondaryWords = secondaryWords
+        )
+    }
+
+    private fun startPositionPolling(publisher: String) {
+        positionJob?.cancel()
+        val context = app ?: return
+        positionJob = positionScope.launch {
+            while (isActive) {
+                val pos = MediaMetadataHelper.getPlaybackPosition(context, publisher)
+                if (pos >= 0) sink?.onPositionChanged(pos)
+                delay(50)
+            }
+        }
+    }
+
+    private fun stopPositionPolling() {
+        positionJob?.cancel()
+        positionJob = null
+    }
+
+    companion object {
+        private const val TAG = "SuperLyricSource"
+    }
+}

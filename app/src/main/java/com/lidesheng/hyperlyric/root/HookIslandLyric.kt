@@ -532,7 +532,13 @@ object HookIslandLyric : IslandRenderer {
         val behavior = prefs.getInt(RootConstants.KEY_HOOK_ISLAND_BEHAVIOR_AFTER_PAUSE, RootConstants.DEFAULT_HOOK_ISLAND_BEHAVIOR_AFTER_PAUSE)
 
         if (isPlaying) {
-            refreshActiveIsland()
+            val activePkg = LyriconDataBridge.activePackageName
+            val hasInjection = activePkg != null && activeIslandPkgNames.values.any { it == activePkg }
+            if (hasInjection) {
+                updateLyricLine()
+            } else {
+                refreshActiveIsland()
+            }
         } else {
             when (behavior) {
                 0 -> {

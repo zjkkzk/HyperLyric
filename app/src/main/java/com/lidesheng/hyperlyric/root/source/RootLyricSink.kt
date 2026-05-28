@@ -7,6 +7,7 @@ import com.lidesheng.hyperlyric.root.aitrans.AITranslator
 import com.lidesheng.hyperlyric.root.utils.HookLogger
 import com.lidesheng.hyperlyric.root.utils.Constants as RootConstants
 import io.github.proify.lyricon.lyric.model.Song
+import io.github.proify.lyricon.lyric.model.interfaces.IRichLyricLine
 import io.github.proify.lyricon.lyric.style.AiTranslationConfigs
 import io.github.proify.lyricon.lyric.style.AiTranslationProvider
 import kotlinx.coroutines.CoroutineScope
@@ -42,9 +43,18 @@ class RootLyricSink(
         }
     }
 
-    override fun onLyricLine(line: Any?) {}
+    override fun onLyricLine(line: Any?) {
+        if (line is IRichLyricLine) {
+            LyriconDataBridge.isPlaying = true
+            LyriconDataBridge.updateLyricLine(line)
+            renderer.updateLyricLine()
+        }
+    }
 
-    override fun onPlainText(text: String?) {}
+    override fun onPlainText(text: String?) {
+        LyriconDataBridge.updateLyric(text)
+        renderer.updateLyricLine()
+    }
 
     override fun onStop() {
         activeAiTranslationJob?.cancel()
@@ -54,7 +64,12 @@ class RootLyricSink(
         renderer.refreshActiveIsland()
     }
 
-    override fun onMetadata(title: String?, artist: String?, album: String?) {}
+    override fun onMetadata(title: String?, artist: String?, album: String?, publisher: String?) {
+        if (title != null) LyriconDataBridge.currentSongName = title
+        if (!publisher.isNullOrEmpty()) {
+            LyriconDataBridge.activePackageName = publisher
+        }
+    }
 
     override fun onPlaybackStateChanged(isPlaying: Boolean) {
         LyriconDataBridge.isPlaying = isPlaying

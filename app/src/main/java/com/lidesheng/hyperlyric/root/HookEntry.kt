@@ -2,6 +2,7 @@ package com.lidesheng.hyperlyric.root
 
 import com.lidesheng.hyperlyric.root.source.LyriconSource
 import com.lidesheng.hyperlyric.root.source.RootLyricSink
+import com.lidesheng.hyperlyric.root.source.SuperLyricSource
 import com.lidesheng.hyperlyric.root.utils.HookLogger
 import com.lidesheng.hyperlyric.ui.utils.Constants as UIConstants
 import com.lidesheng.hyperlyric.root.utils.Constants as RootConstants
@@ -16,6 +17,7 @@ class HookEntry : XposedModule() {
     companion object {
         var activeMode = 0
         val lyriconSource = LyriconSource()
+        val superLyricSource = SuperLyricSource()
         @JvmStatic
         var instance: HookEntry? = null
             private set
@@ -155,8 +157,14 @@ class HookEntry : XposedModule() {
                 try {
                     val renderer = if (activeMode == 1) HookIslandSpaceGateLyric else HookIslandLyric
                     val entry = instance!!
+                    val sink = RootLyricSink(renderer, entry.prefs)
+
                     lyriconSource.initialize(app, entry.prefs, activeMode)
-                    lyriconSource.start(RootLyricSink(renderer, entry.prefs))
+
+                    val activeSource = superLyricSource
+                    activeSource.initialize(app)
+                    activeSource.start(sink)
+                    HookLogger.i("HookEntry", "ModuleInit : 歌词源 = ${activeSource.displayName}")
                     HookLogger.i("HookEntry", "ModuleInit : 系统环境初始化完成")
                 } catch (e: Exception) {
                     HookLogger.e("HookEntry", "ModuleInit : 系统环境初始化失败", e)

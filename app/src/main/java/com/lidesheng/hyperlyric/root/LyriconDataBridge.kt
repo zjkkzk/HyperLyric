@@ -115,11 +115,19 @@ object LyriconDataBridge {
         }
     }
 
+    fun updateLyricLine(line: IRichLyricLine) {
+        isTextMode = false
+        currentLyricLine = line
+        currentLyric = line.text
+    }
+
     fun clearAll() {
         currentSong = null
         currentSongName = null
         currentLyric = null
         currentLyricLine = null
+        isPlaying = false
+        activePackageName = null
         isTextMode = false
         isDisplayTranslation = true
         isDisplayRoma = true
