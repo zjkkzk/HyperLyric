@@ -1,4 +1,4 @@
-package com.lidesheng.hyperlyric.service
+package com.lidesheng.hyperlyric.common.image
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -18,7 +18,7 @@ import com.lidesheng.hyperlyric.utils.LogManager
  * 负责所有 Bitmap 裁剪、圆角处理和从封面提取强调色的逻辑。
  * LiveLyricService 仅在对应开关打开时才调用此处的方法，
  */
-object AlbumImageProcessor {
+object AlbumImageHelper {
 
     private val defaultColor = "#E0E0E0".toColorInt()
 

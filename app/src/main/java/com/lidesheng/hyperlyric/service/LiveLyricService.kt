@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
+import com.lidesheng.hyperlyric.common.image.AlbumImageHelper
 import com.lidesheng.hyperlyric.root.utils.Constants as RootConstants
 import com.lidesheng.hyperlyric.service.Constants as ServiceConstants
 import com.lidesheng.hyperlyric.ui.utils.Constants as UIConstants
@@ -261,23 +262,23 @@ class LiveLyricService : NotificationListenerService() {
             progressJob = null
         }
         
-        // 使用 AlbumImageProcessor 处理图片
+        // 使用 AlbumImageHelper 处理图片
         val albumBitmap = if (isNewSong) {
             val raw = metadata.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
                 ?: metadata.getBitmap(MediaMetadata.METADATA_KEY_ART)
-            AlbumImageProcessor.safeCopyBitmap(raw)
+            AlbumImageHelper.safeCopyBitmap(raw)
         } else {
             DynamicLyricData.currentState.albumBitmap
         }
 
         val notificationAlbumBitmap = if (isNewSong) {
-            albumBitmap?.let { AlbumImageProcessor.processAlbumBitmap(it) }
+            albumBitmap?.let { AlbumImageHelper.processAlbumBitmap(it) }
         } else {
             DynamicLyricData.currentState.notificationAlbumBitmap
         }
 
         val notificationAlbumBitmapCircular = if (isNewSong) {
-            albumBitmap?.let { AlbumImageProcessor.processAlbumBitmapCircular(it) }
+            albumBitmap?.let { AlbumImageHelper.processAlbumBitmapCircular(it) }
         } else {
             DynamicLyricData.currentState.notificationAlbumBitmapCircular
         }
@@ -375,7 +376,7 @@ class LiveLyricService : NotificationListenerService() {
 
         DynamicLyricData.updateAnchor(data.position, data.isPlaying)
 
-        // 使用 AlbumImageProcessor 做取色，仅在任意强调色开关打开时
+        // 使用 AlbumImageHelper 做取色，仅在任意强调色开关打开时
         if (data.isNewSong) {
             val progressColorEnabled = sp.getBoolean(ServiceConstants.KEY_NOTIFICATION_PROGRESS_COLOR, ServiceConstants.DEFAULT_NOTIFICATION_PROGRESS_COLOR)
             val highlightColorEnabled = sp.getBoolean(ServiceConstants.KEY_NOTIFICATION_HIGHLIGHT_COLOR, ServiceConstants.DEFAULT_NOTIFICATION_HIGHLIGHT_COLOR)
@@ -384,10 +385,10 @@ class LiveLyricService : NotificationListenerService() {
             val shouldExtract = progressColorEnabled || highlightColorEnabled || songInfoHighlightColorEnabled
             
             val colors = if (shouldExtract) {
-                AlbumImageProcessor.extractColors(data.albumBitmap)
+                AlbumImageHelper.extractColors(data.albumBitmap)
             } else {
                 val default = "#E0E0E0".toColorInt()
-                AlbumImageProcessor.ExtractedColors(default, default)
+                AlbumImageHelper.ExtractedColors(default, default)
             }
             LogManager.d("LiveLyricService", "正在提取封面取色: 主色=${String.format("#%06X", 0xFFFFFF and colors.main)}, 次色=${String.format("#%06X", 0xFFFFFF and colors.secondary)}")
             DynamicLyricData.updateColor(colors.main, colors.secondary)

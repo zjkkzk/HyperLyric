@@ -1,9 +1,10 @@
-package com.lidesheng.hyperlyric.root.utils
+package com.lidesheng.hyperlyric.common.media
 
 import android.content.Context
 import android.graphics.Bitmap
 import android.media.MediaMetadata
 import android.media.session.MediaSessionManager
+import com.lidesheng.hyperlyric.root.utils.xLogError
 
 /**
  * 媒体元数据辅助类。

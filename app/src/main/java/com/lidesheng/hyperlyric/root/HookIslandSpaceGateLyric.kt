@@ -13,7 +13,7 @@ import com.lidesheng.hyperlyric.root.utils.Constants as RootConstants
 
 import com.lidesheng.hyperlyric.root.utils.DynamicFinder
 import com.lidesheng.hyperlyric.root.utils.LyricStyleHelper
-import com.lidesheng.hyperlyric.root.utils.MediaMetadataHelper
+import com.lidesheng.hyperlyric.common.media.MediaMetadataHelper
 import com.lidesheng.hyperlyric.root.utils.TranslationHelper
 import com.lidesheng.hyperlyric.root.utils.xLogError
 import com.lidesheng.hyperlyric.root.utils.xLogWarn
