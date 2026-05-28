@@ -156,7 +156,7 @@ class HookEntry : XposedModule() {
                     val renderer = if (activeMode == 1) HookIslandSpaceGateLyric else HookIslandLyric
                     val entry = instance!!
                     lyriconSource.initialize(app, entry.prefs, activeMode)
-                    lyriconSource.start(RootLyricSink(renderer))
+                    lyriconSource.start(RootLyricSink(renderer, entry.prefs))
                     HookLogger.i("HookEntry", "ModuleInit : 系统环境初始化完成")
                 } catch (e: Exception) {
                     HookLogger.e("HookEntry", "ModuleInit : 系统环境初始化失败", e)

@@ -95,7 +95,7 @@ class LyriconSource : LyricSource {
             }
 
             override fun onSongChanged(song: Song?) {
-                LyriconDataBridge.updateSong(song, prefs)
+                LyriconDataBridge.updateSong(song)
                 sink?.onSongChanged(song)
                 getRenderer().refreshActiveIsland()
             }
