@@ -35,7 +35,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.lidesheng.hyperlyric.Quotes
+import com.lidesheng.hyperlyric.ui.utils.QuotesData
 import com.lidesheng.hyperlyric.R
 import com.lidesheng.hyperlyric.ui.component.SearchBarFake
 import com.lidesheng.hyperlyric.ui.component.SearchBox
@@ -71,8 +71,8 @@ fun PoetryPage() {
     var searchStatus by remember { mutableStateOf(SearchStatus(label = searchLabel)) }
 
     val filteredQuotes = remember(searchStatus.searchText) {
-        if (searchStatus.searchText.isBlank()) Quotes.list
-        else Quotes.list.filter { it.contains(searchStatus.searchText, ignoreCase = true) }
+        if (searchStatus.searchText.isBlank()) QuotesData.list
+        else QuotesData.list.filter { it.contains(searchStatus.searchText, ignoreCase = true) }
     }
 
     val topAppBarScrollBehavior = MiuixScrollBehavior()

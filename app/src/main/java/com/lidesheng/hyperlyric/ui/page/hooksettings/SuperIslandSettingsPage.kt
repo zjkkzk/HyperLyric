@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import com.lidesheng.hyperlyric.ui.utils.Constants as UIConstants
 import com.lidesheng.hyperlyric.root.utils.Constants as RootConstants
-import com.lidesheng.hyperlyric.root.utils.ConfigSync
+import com.lidesheng.hyperlyric.common.PrefsBridge
 import com.lidesheng.hyperlyric.ui.navigation.LocalNavigator
 import com.lidesheng.hyperlyric.ui.utils.BlurredBar
 import com.lidesheng.hyperlyric.ui.utils.pageScrollModifiers
@@ -81,7 +81,10 @@ fun SuperIslandSettingsPage() {
                 is Boolean -> putBoolean(key, value)
             }
         }
-        ConfigSync.syncPreference(UIConstants.PREF_NAME, key, value)
+        when (value) {
+            is Int -> PrefsBridge.putInt(key, value)
+            is Boolean -> PrefsBridge.putBoolean(key, value)
+        }
         val refreshKeys = setOf(
             RootConstants.KEY_HOOK_ISLAND_LEFT_ALBUM, RootConstants.KEY_HOOK_ISLAND_RIGHT_ICON,
             RootConstants.KEY_HOOK_ISLAND_CONTENT_LEFT, RootConstants.KEY_HOOK_ISLAND_CONTENT_RIGHT,

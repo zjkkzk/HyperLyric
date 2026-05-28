@@ -29,7 +29,7 @@ import androidx.core.content.edit
 import com.lidesheng.hyperlyric.R
 import com.lidesheng.hyperlyric.ui.utils.Constants as UIConstants
 import com.lidesheng.hyperlyric.root.utils.Constants as RootConstants
-import com.lidesheng.hyperlyric.root.utils.ConfigSync
+import com.lidesheng.hyperlyric.common.PrefsBridge
 import com.lidesheng.hyperlyric.ui.navigation.LocalNavigator
 import com.lidesheng.hyperlyric.ui.utils.BlurredBar
 import com.lidesheng.hyperlyric.ui.utils.rememberBlurBackdrop
@@ -132,7 +132,12 @@ fun LyricSettingsPage() {
                     is String -> putString(key, value)
                 }
             }
-            ConfigSync.syncPreference(UIConstants.PREF_NAME, key, value)
+            when (value) {
+                is Int -> PrefsBridge.putInt(key, value)
+                is Boolean -> PrefsBridge.putBoolean(key, value)
+                is Float -> PrefsBridge.putFloat(key, value)
+                is String -> PrefsBridge.putString(key, value)
+            }
             val refreshKeys = setOf(
                 RootConstants.KEY_HOOK_TEXT_SIZE,
                 RootConstants.KEY_HOOK_FONT_WEIGHT,

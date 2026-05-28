@@ -6,7 +6,7 @@ data class ChangelogItem(
     val summary: String
 )
 
-object ChangelogManager {
+object ChangelogData {
     fun getChangelog(): List<ChangelogItem> {
         return listOf(
             ChangelogItem(

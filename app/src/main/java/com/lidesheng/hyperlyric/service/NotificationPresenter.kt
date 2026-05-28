@@ -33,7 +33,7 @@ class NotificationPresenter(
     private val scope: CoroutineScope
 ) {
     private val notificationManager by lazy { context.getSystemService(NotificationManager::class.java) }
-    private var lastUiState: NotificationManagerHelper.UiState? = null
+    private var lastUiState: NotificationBuilder.UiState? = null
     private var pauseDebounceJob: Job? = null
     private val pauseDebounceMs = 150L
 
@@ -73,7 +73,7 @@ class NotificationPresenter(
     fun register() {
         val filter = IntentFilter("com.lidesheng.hyperlyric.ACTION_TOGGLE_PLAYBACK")
         context.registerReceiver(playbackToggleReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        NotificationManagerHelper.createNotificationChannel(context, notificationManager)
+        NotificationBuilder.createNotificationChannel(context, notificationManager)
     }
 
     fun unregister() {
@@ -109,7 +109,7 @@ class NotificationPresenter(
         val currentPos = with(DynamicLyricData) { globalState.getCurrentPosition() }.coerceIn(0, safeDuration)
         val progressPercent = if (safeDuration > 1000) ((currentPos.toDouble() / safeDuration.toDouble()) * 100).roundToInt().coerceIn(0, 100) else 0
 
-        val currentUiState = NotificationManagerHelper.UiState(
+        val currentUiState = NotificationBuilder.UiState(
             title = globalState.islandTitleRight,
             songLyric = globalState.songLyric,
             songInfo = globalState.songInfo,
@@ -173,7 +173,7 @@ class NotificationPresenter(
 
     // ─── 内部方法 ─────────────────────────────────────────
 
-    private fun NotificationManagerHelper.UiState.isProgressOnlyChange(other: NotificationManagerHelper.UiState): Boolean {
+    private fun NotificationBuilder.UiState.isProgressOnlyChange(other: NotificationBuilder.UiState): Boolean {
         return progress != other.progress &&
                 title == other.title &&
                 islandTitleLeft == other.islandTitleLeft &&
@@ -186,7 +186,7 @@ class NotificationPresenter(
                 islandLeftIconStyle == other.islandLeftIconStyle
     }
 
-    private fun dispatchNotifications(uiState: NotificationManagerHelper.UiState, duration: Long, isScreenOn: Boolean) {
+    private fun dispatchNotifications(uiState: NotificationBuilder.UiState, duration: Long, isScreenOn: Boolean) {
         val sp = context.getSharedPreferences(UIConstants.PREF_NAME, Context.MODE_PRIVATE)
         val showProgressSetting = sp.getBoolean(ServiceConstants.KEY_NOTIFICATION_SHOW_PROGRESS, ServiceConstants.DEFAULT_NOTIFICATION_SHOW_PROGRESS)
         val actualShowProgress = isScreenOn && showProgressSetting
@@ -195,13 +195,13 @@ class NotificationPresenter(
         when (notificationType) {
             0 -> {
                 // 实时通知
-                val notification = NotificationManagerHelper.buildNormalNotification(context, uiState, duration, actualShowProgress)
-                notifyWrapper(NotificationManagerHelper.NORMAL_NOTIFICATION_ID, notification)
-                NotificationManagerHelper.cancelFocusNotification(notificationManager)
+                val notification = NotificationBuilder.buildNormalNotification(context, uiState, duration, actualShowProgress)
+                notifyWrapper(NotificationBuilder.NORMAL_NOTIFICATION_ID, notification)
+                NotificationBuilder.cancelFocusNotification(notificationManager)
             }
             1 -> {
                 // 焦点通知
-                val focusNotification = NotificationManagerHelper.buildFocusNotification(context, uiState, actualShowProgress)
+                val focusNotification = NotificationBuilder.buildFocusNotification(context, uiState, actualShowProgress)
                 if (isBypassFocusLimitEnabled) {
                     networkCutJob?.cancel()
                     val seq = ++networkCutSeq
@@ -213,7 +213,7 @@ class NotificationPresenter(
                             
                             // 2. 极速在主线程发射通知
                             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                notifyWrapper(NotificationManagerHelper.FOCUS_NOTIFICATION_ID, focusNotification)
+                                notifyWrapper(NotificationBuilder.FOCUS_NOTIFICATION_ID, focusNotification)
                             }
                             
                             // 3. 保持盲区防抖窗口 (100ms)
@@ -232,9 +232,9 @@ class NotificationPresenter(
                         }
                     }
                 } else {
-                    notifyWrapper(NotificationManagerHelper.FOCUS_NOTIFICATION_ID, focusNotification)
+                    notifyWrapper(NotificationBuilder.FOCUS_NOTIFICATION_ID, focusNotification)
                 }
-                NotificationManagerHelper.cancelNormalNotification(notificationManager)
+                NotificationBuilder.cancelNormalNotification(notificationManager)
             }
         }
     }
@@ -248,8 +248,8 @@ class NotificationPresenter(
     }
 
     fun clearNotifications() {
-        NotificationManagerHelper.cancelFocusNotification(notificationManager)
-        NotificationManagerHelper.cancelNormalNotification(notificationManager)
+        NotificationBuilder.cancelFocusNotification(notificationManager)
+        NotificationBuilder.cancelNormalNotification(notificationManager)
         lastUiState = null
 
         if (isBypassFocusLimitEnabled) {

@@ -23,7 +23,7 @@ import androidx.core.content.edit
 import com.lidesheng.hyperlyric.R
 import com.lidesheng.hyperlyric.ui.utils.Constants as UIConstants
 import com.lidesheng.hyperlyric.root.utils.Constants as RootConstants
-import com.lidesheng.hyperlyric.root.utils.ConfigSync
+import com.lidesheng.hyperlyric.common.PrefsBridge
 import com.lidesheng.hyperlyric.ui.navigation.LocalNavigator
 import com.lidesheng.hyperlyric.ui.navigation.Route
 import com.lidesheng.hyperlyric.ui.utils.BlurredBar
@@ -112,7 +112,7 @@ private fun LazyListScope.hookSettingsSections() {
                 onSelectedIndexChange = { index ->
                     lyricMode = index
                     prefs.edit { putInt(RootConstants.KEY_HOOK_LYRIC_MODE, index) }
-                    ConfigSync.syncPreference(UIConstants.PREF_NAME, RootConstants.KEY_HOOK_LYRIC_MODE, index)
+                    PrefsBridge.putInt(RootConstants.KEY_HOOK_LYRIC_MODE, index)
                 }
             )
         }

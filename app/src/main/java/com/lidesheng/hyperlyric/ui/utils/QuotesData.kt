@@ -1,6 +1,6 @@
-﻿package com.lidesheng.hyperlyric
+package com.lidesheng.hyperlyric.ui.utils
 
-object Quotes {
+object QuotesData {
     val list = listOf(
         "怅寥廓，问苍茫大地，谁主沉浮？",
         "恰同学少年，风华正茂；书生意气，挥斥方遒。指点江山，激扬文字，粪土当年万户侯。曾记否，到中流击水，浪遏飞舟？",

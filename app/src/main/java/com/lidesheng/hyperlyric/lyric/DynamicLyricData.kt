@@ -5,7 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.os.SystemClock
 import androidx.core.content.edit
-import com.lidesheng.hyperlyric.root.utils.ConfigSync
+import com.lidesheng.hyperlyric.common.PrefsBridge
 import com.lidesheng.hyperlyric.ui.utils.Constants as UIConstants
 import com.lidesheng.hyperlyric.service.Constants as ServiceConstants
 import com.lidesheng.hyperlyric.root.utils.Constants as RootConstants
@@ -191,7 +191,7 @@ object DynamicLyricData {
         context.getSharedPreferences(UIConstants.PREF_NAME, Context.MODE_PRIVATE).edit {
             putStringSet(ServiceConstants.KEY_NOTIFICATION_WHITELIST, set)
         }
-        ConfigSync.syncPreference(UIConstants.PREF_NAME, ServiceConstants.KEY_NOTIFICATION_WHITELIST, set)
+        PrefsBridge.putStringSet(ServiceConstants.KEY_NOTIFICATION_WHITELIST, set)
     }
 
     // --- 歌词钩子白名单 (新逻辑) ---
@@ -264,7 +264,7 @@ object DynamicLyricData {
             putStringSet(RootConstants.KEY_HOOK_ADDED_LIST, added)
         }
         
-        ConfigSync.syncPreference(UIConstants.PREF_NAME, RootConstants.KEY_HOOK_WHITELIST, whitelist)
-        ConfigSync.syncPreference(UIConstants.PREF_NAME, RootConstants.KEY_HOOK_ADDED_LIST, added)
+        PrefsBridge.putStringSet(RootConstants.KEY_HOOK_WHITELIST, whitelist)
+        PrefsBridge.putStringSet(RootConstants.KEY_HOOK_ADDED_LIST, added)
     }
 }

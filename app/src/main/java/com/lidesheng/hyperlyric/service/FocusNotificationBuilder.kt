@@ -3,7 +3,7 @@ package com.lidesheng.hyperlyric.service
 import org.json.JSONObject
 
 class FocusNotificationBuilder(
-    private val uiState: NotificationManagerHelper.UiState,
+    private val uiState: NotificationBuilder.UiState,
     private val showProgress: Boolean
 ) {
     /**

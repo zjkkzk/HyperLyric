@@ -1,22 +1,25 @@
-﻿package com.lidesheng.hyperlyric.root.utils
+package com.lidesheng.hyperlyric.root
 
 import android.app.Application
 import android.content.Context
+import com.lidesheng.hyperlyric.common.PrefsBridge
 import com.lidesheng.hyperlyric.ui.utils.Constants as UIConstants
 import com.lidesheng.hyperlyric.utils.LogManager
 import io.github.libxposed.service.XposedService
 import io.github.libxposed.service.XposedServiceHelper
 
-class ConfigSync : Application() {
+class RootApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
         LogManager.init(this)
+        PrefsBridge.init(this)
+        appContext = this
 
         XposedServiceHelper.registerListener(object : XposedServiceHelper.OnServiceListener {
             override fun onServiceBind(service: XposedService) {
                 xposedService = service
-                syncAllPreferences(this@ConfigSync)
+                syncAllPreferences(this@RootApplication)
             }
             override fun onServiceDied(service: XposedService) {
                 xposedService = null
@@ -61,5 +64,13 @@ class ConfigSync : Application() {
                 syncPreference(UIConstants.PREF_NAME, key, value)
             }
         }
+
+        @JvmStatic
+        fun syncAllPreferences() {
+            val context = appContext ?: return
+            syncAllPreferences(context)
+        }
+
+        private var appContext: Context? = null
     }
 }

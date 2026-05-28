@@ -1,4 +1,4 @@
-﻿package com.lidesheng.hyperlyric.service
+package com.lidesheng.hyperlyric.service
 
 import com.lidesheng.hyperlyric.utils.LogManager
 import com.lidesheng.hyperlyric.ui.utils.Constants as UIConstants
@@ -17,7 +17,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.createBitmap
 import androidx.core.app.NotificationCompat
 
-object NotificationManagerHelper {
+object NotificationBuilder {
     private const val CHANNEL_ID = "hyper_lyric_live_v4"
     private const val CHANNEL_ID_FOCUS = "hyper_lyric_focus_v1"
     const val NORMAL_NOTIFICATION_ID = 2002
@@ -226,7 +226,7 @@ object NotificationManagerHelper {
         try {
             notificationManager.cancel(FOCUS_NOTIFICATION_ID)
         } catch (e: Exception) {
-            LogManager.e("NotificationManagerHelper", "取消焦点通知失败", e)
+            LogManager.e("NotificationBuilder", "取消焦点通知失败", e)
         }
     }
 
@@ -234,7 +234,7 @@ object NotificationManagerHelper {
         try {
             notificationManager.cancel(NORMAL_NOTIFICATION_ID)
         } catch (e: Exception) {
-            LogManager.e("NotificationManagerHelper", "取消普通通知失败", e)
+            LogManager.e("NotificationBuilder", "取消普通通知失败", e)
         }
     }
 

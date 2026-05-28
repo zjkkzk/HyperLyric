@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.edit
 import com.lidesheng.hyperlyric.R
+import com.lidesheng.hyperlyric.root.RootApplication
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -153,6 +154,7 @@ fun rememberBackupRestoreHelper(snackbarHostState: SnackbarHostState): BackupRes
                         return@launch
                     }
                     val success = BackupRestoreManager.restoreFromJson(context, json)
+                    if (success) RootApplication.syncAllPreferences()
                     snackbarHostState.showSnackbar(
                         message = if (success) msgRestoreSuccess else msgRestoreInvalid,
                         duration = SnackbarDuration.Custom(2000L)

@@ -57,9 +57,10 @@ import androidx.core.content.edit
 import androidx.core.content.pm.PackageInfoCompat
 import com.lidesheng.hyperlyric.ui.utils.Constants as UIConstants
 import com.lidesheng.hyperlyric.root.utils.Constants as RootConstants
-import com.lidesheng.hyperlyric.Quotes
+import com.lidesheng.hyperlyric.ui.utils.QuotesData
 import com.lidesheng.hyperlyric.R
-import com.lidesheng.hyperlyric.root.utils.ConfigSync
+import com.lidesheng.hyperlyric.common.PrefsBridge
+import com.lidesheng.hyperlyric.root.RootApplication
 import com.lidesheng.hyperlyric.root.utils.ShellUtils
 import com.lidesheng.hyperlyric.service.LiveLyricService
 import com.lidesheng.hyperlyric.ui.navigation.LocalNavigator
@@ -112,7 +113,7 @@ fun MainPage() {
     }
 
     // --- quote ---
-    var randomQuote by rememberSaveable { mutableStateOf(Quotes.list.random()) }
+    var randomQuote by rememberSaveable { mutableStateOf(QuotesData.list.random()) }
 
     // --- toast messages ---
     val msgPermissionGranted = stringResource(R.string.toast_permission_granted)
@@ -194,10 +195,10 @@ fun MainPage() {
     // --- callbacks (remembered for reference stability) ---
     val toggleSuperIsland: (Boolean) -> Unit = remember { { isChecked ->
         if (isChecked) {
-            if (ConfigSync.xposedService != null) {
+            if (RootApplication.xposedService != null) {
                 enableSuperIsland = true
                 prefs.edit { putBoolean(RootConstants.KEY_HOOK_ENABLE_SUPER_ISLAND, true) }
-                ConfigSync.syncPreference(UIConstants.PREF_NAME, RootConstants.KEY_HOOK_ENABLE_SUPER_ISLAND, true)
+                PrefsBridge.putBoolean(RootConstants.KEY_HOOK_ENABLE_SUPER_ISLAND, true)
             } else {
                 scope.launch {
                     snackbarHostState.showSnackbar(
@@ -209,7 +210,7 @@ fun MainPage() {
         } else {
             enableSuperIsland = false
             prefs.edit { putBoolean(RootConstants.KEY_HOOK_ENABLE_SUPER_ISLAND, false) }
-            ConfigSync.syncPreference(UIConstants.PREF_NAME, RootConstants.KEY_HOOK_ENABLE_SUPER_ISLAND, false)
+            PrefsBridge.putBoolean(RootConstants.KEY_HOOK_ENABLE_SUPER_ISLAND, false)
         }
     } }
 
@@ -220,7 +221,7 @@ fun MainPage() {
             if (hasPostNotification && hasListenerPermission) {
                 enableDynamicIsland = true
                 prefs.edit { putBoolean(RootConstants.KEY_HOOK_ENABLE_DYNAMIC_ISLAND, true) }
-                ConfigSync.syncPreference(UIConstants.PREF_NAME, RootConstants.KEY_HOOK_ENABLE_DYNAMIC_ISLAND, true)
+                PrefsBridge.putBoolean(RootConstants.KEY_HOOK_ENABLE_DYNAMIC_ISLAND, true)
                 LiveLyricService.ensureListenerBound(context)
             } else {
                 showPermissionSheet = true
@@ -228,16 +229,16 @@ fun MainPage() {
         } else {
             enableDynamicIsland = false
             prefs.edit { putBoolean(RootConstants.KEY_HOOK_ENABLE_DYNAMIC_ISLAND, false) }
-            ConfigSync.syncPreference(UIConstants.PREF_NAME, RootConstants.KEY_HOOK_ENABLE_DYNAMIC_ISLAND, false)
+            PrefsBridge.putBoolean(RootConstants.KEY_HOOK_ENABLE_DYNAMIC_ISLAND, false)
         }
     } }
 
     val toggleRemoveFocusWhitelist: (Boolean) -> Unit = remember { { checked ->
         if (checked) {
-            if (ConfigSync.xposedService != null) {
+            if (RootApplication.xposedService != null) {
                 removeFocusWhitelist = true
                 prefs.edit { putBoolean(RootConstants.KEY_HOOK_REMOVE_FOCUS_WHITELIST, true) }
-                ConfigSync.syncPreference(UIConstants.PREF_NAME, RootConstants.KEY_HOOK_REMOVE_FOCUS_WHITELIST, true)
+                PrefsBridge.putBoolean(RootConstants.KEY_HOOK_REMOVE_FOCUS_WHITELIST, true)
             } else {
                 scope.launch {
                     snackbarHostState.showSnackbar(
@@ -249,16 +250,16 @@ fun MainPage() {
         } else {
             removeFocusWhitelist = false
             prefs.edit { putBoolean(RootConstants.KEY_HOOK_REMOVE_FOCUS_WHITELIST, false) }
-            ConfigSync.syncPreference(UIConstants.PREF_NAME, RootConstants.KEY_HOOK_REMOVE_FOCUS_WHITELIST, false)
+            PrefsBridge.putBoolean(RootConstants.KEY_HOOK_REMOVE_FOCUS_WHITELIST, false)
         }
     } }
 
     val toggleRemoveIslandWhitelist: (Boolean) -> Unit = remember { { checked ->
         if (checked) {
-            if (ConfigSync.xposedService != null) {
+            if (RootApplication.xposedService != null) {
                 removeIslandWhitelist = true
                 prefs.edit { putBoolean(RootConstants.KEY_HOOK_REMOVE_ISLAND_WHITELIST, true) }
-                ConfigSync.syncPreference(UIConstants.PREF_NAME, RootConstants.KEY_HOOK_REMOVE_ISLAND_WHITELIST, true)
+                PrefsBridge.putBoolean(RootConstants.KEY_HOOK_REMOVE_ISLAND_WHITELIST, true)
             } else {
                 scope.launch {
                     snackbarHostState.showSnackbar(
@@ -270,7 +271,7 @@ fun MainPage() {
         } else {
             removeIslandWhitelist = false
             prefs.edit { putBoolean(RootConstants.KEY_HOOK_REMOVE_ISLAND_WHITELIST, false) }
-            ConfigSync.syncPreference(UIConstants.PREF_NAME, RootConstants.KEY_HOOK_REMOVE_ISLAND_WHITELIST, false)
+            PrefsBridge.putBoolean(RootConstants.KEY_HOOK_REMOVE_ISLAND_WHITELIST, false)
         }
     } }
 
@@ -281,7 +282,7 @@ fun MainPage() {
             showPermissionSheet = false
             enableDynamicIsland = true
             prefs.edit { putBoolean(RootConstants.KEY_HOOK_ENABLE_DYNAMIC_ISLAND, true) }
-            ConfigSync.syncPreference(UIConstants.PREF_NAME, RootConstants.KEY_HOOK_ENABLE_DYNAMIC_ISLAND, true)
+            PrefsBridge.putBoolean(RootConstants.KEY_HOOK_ENABLE_DYNAMIC_ISLAND, true)
             LiveLyricService.ensureListenerBound(context)
         } else {
             scope.launch {
@@ -439,7 +440,7 @@ fun MainPage() {
                     HomePage(
                         outerPadding = innerPadding,
                         randomQuote = randomQuote,
-                        onQuoteClick = { randomQuote = Quotes.list.random() },
+                        onQuoteClick = { randomQuote = QuotesData.list.random() },
                         onQuoteLongPress = { navigator.navigate(Route.Poetry) },
                         enableSuperIsland = enableSuperIsland,
                         onSuperIslandToggle = toggleSuperIsland,

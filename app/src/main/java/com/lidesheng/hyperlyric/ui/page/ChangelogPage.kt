@@ -23,7 +23,7 @@ import com.lidesheng.hyperlyric.ui.navigation.LocalNavigator
 import com.lidesheng.hyperlyric.ui.utils.BlurredBar
 import com.lidesheng.hyperlyric.ui.utils.pageScrollModifiers
 import com.lidesheng.hyperlyric.ui.utils.rememberBlurBackdrop
-import com.lidesheng.hyperlyric.utils.ChangelogManager
+import com.lidesheng.hyperlyric.utils.ChangelogData
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -45,7 +45,7 @@ fun ChangelogPage() {
     val blurActive = backdrop != null
     val barColor = if (blurActive) Color.Transparent else MiuixTheme.colorScheme.surface
     val topAppBarScrollBehavior = MiuixScrollBehavior()
-    val changelogs = remember { ChangelogManager.getChangelog() }
+    val changelogs = remember { ChangelogData.getChangelog() }
 
     Scaffold(
         topBar = {
