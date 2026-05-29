@@ -1,6 +1,6 @@
 ﻿package com.lidesheng.hyperlyric.root.aitrans
 
-import io.github.proify.android.extensions.md5
+import com.lidesheng.hyperlyric.common.extensions.md5
 import com.lidesheng.hyperlyric.lyric.model.Song
 import com.lidesheng.hyperlyric.lyric.style.AiTranslationConfigs
 
@@ -16,5 +16,6 @@ internal object AITranslationKey {
         }.md5()
     }
 }
+
 
 

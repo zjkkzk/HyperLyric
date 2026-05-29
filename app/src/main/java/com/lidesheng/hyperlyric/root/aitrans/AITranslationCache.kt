@@ -1,12 +1,12 @@
-package com.lidesheng.hyperlyric.root.aitrans
+﻿package com.lidesheng.hyperlyric.root.aitrans
 
 import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.util.Log
-import io.github.proify.android.extensions.json
-import io.github.proify.android.extensions.toJson
+import com.lidesheng.hyperlyric.common.extensions.json
+import com.lidesheng.hyperlyric.common.extensions.toJson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -148,3 +148,4 @@ internal class AITranslationCache(
         }
     }
 }
+

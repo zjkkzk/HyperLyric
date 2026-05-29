@@ -2,8 +2,8 @@
 
 import android.util.Log
 import com.lidesheng.hyperlyric.root.utils.HookLogger
-import io.github.proify.android.extensions.json
-import io.github.proify.android.extensions.toJson
+import com.lidesheng.hyperlyric.common.extensions.json
+import com.lidesheng.hyperlyric.common.extensions.toJson
 import com.lidesheng.hyperlyric.lyric.model.Song
 import com.lidesheng.hyperlyric.lyric.style.AiTranslationConfigs
 import kotlinx.coroutines.CancellationException
@@ -109,5 +109,6 @@ internal object OpenAiTranslationClient {
         return text.any { it.isLetter() }
     }
 }
+
 
 

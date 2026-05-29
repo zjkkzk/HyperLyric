@@ -1,8 +1,8 @@
-package com.lidesheng.hyperlyric.root.aitrans
+﻿package com.lidesheng.hyperlyric.root.aitrans
 
 import android.util.Log
 import com.lidesheng.hyperlyric.root.utils.HookLogger
-import io.github.proify.android.extensions.json
+import com.lidesheng.hyperlyric.common.extensions.json
 
 internal object AITranslationResponseParser {
     private const val TAG = "HyperLyricAITranslator"
@@ -22,19 +22,37 @@ internal object AITranslationResponseParser {
         if (trimmed.isEmpty()) return null
 
         val objectStart = trimmed.indexOf('{')
-        val objectEnd = trimmed.lastIndexOf('}')
-        if (objectStart >= 0 && objectEnd > objectStart) {
-            return trimmed.substring(objectStart, objectEnd + 1)
+        if (objectStart >= 0) {
+            val objectEnd = findMatchingBrace(trimmed, objectStart, '{', '}')
+            if (objectEnd > objectStart) {
+                return trimmed.substring(objectStart, objectEnd + 1)
+            }
         }
 
         val arrayStart = trimmed.indexOf('[')
-        val arrayEnd = trimmed.lastIndexOf(']')
-        if (arrayStart >= 0 && arrayEnd > arrayStart) {
-            return trimmed.substring(arrayStart, arrayEnd + 1)
+        if (arrayStart >= 0) {
+            val arrayEnd = findMatchingBrace(trimmed, arrayStart, '[', ']')
+            if (arrayEnd > arrayStart) {
+                return trimmed.substring(arrayStart, arrayEnd + 1)
+            }
         }
 
         HookLogger.e("AITranslationResponseParser", "AITranslation : API: No JSON payload found in response: ${trimForLog(trimmed)}")
         return null
+    }
+
+    private fun findMatchingBrace(text: String, startIndex: Int, open: Char, close: Char): Int {
+        var depth = 0
+        for (i in startIndex until text.length) {
+            when (text[i]) {
+                open -> depth++
+                close -> {
+                    depth--
+                    if (depth == 0) return i
+                }
+            }
+        }
+        return -1
     }
 
     private fun decodeTranslationItems(content: String): List<TranslationItem> {
@@ -61,3 +79,4 @@ internal object AITranslationResponseParser {
     private fun trimForLog(value: String): String =
         if (value.length <= MAX_LOG_BODY_LENGTH) value else value.take(MAX_LOG_BODY_LENGTH) + "..."
 }
+
