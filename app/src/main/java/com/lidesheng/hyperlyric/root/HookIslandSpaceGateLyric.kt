@@ -11,12 +11,10 @@ import com.lidesheng.hyperlyric.root.utils.CoverColorHelper
 import com.lidesheng.hyperlyric.common.RootConstants
 
 import com.lidesheng.hyperlyric.root.source.IslandRenderer
-import com.lidesheng.hyperlyric.root.utils.DynamicFinder
 import com.lidesheng.hyperlyric.root.utils.LyricStyleHelper
 import com.lidesheng.hyperlyric.common.media.MediaMetadataHelper
 import com.lidesheng.hyperlyric.root.utils.TranslationHelper
 import io.github.libxposed.api.XposedInterface.Chain
-import io.github.libxposed.api.XposedInterface.Hooker
 import io.github.libxposed.api.XposedModule
 import com.lidesheng.hyperlyric.lyric.model.RichLyricLine
 import com.lidesheng.hyperlyric.lyric.view.SpaceGateRichLyricLineView
@@ -28,148 +26,87 @@ object HookIslandSpaceGateLyric : IslandRenderer {
 
     var activeIslandPkgNames = java.util.Collections.synchronizedMap(java.util.WeakHashMap<View, String>())
     var activeContentView: java.lang.ref.WeakReference<ViewGroup>? = null
-    
-    private val hookedClassLoaders = java.util.Collections.newSetFromMap(java.util.WeakHashMap<ClassLoader, Boolean>())
-
-    @Volatile
-    private var isHookedSuccess = false
 
     private var loggedCutoutInfo = false
 
     /**
-     * 执行 Hook 逻辑。该方法可能在多个进程、多个 ClassLoader 中被调用。
+     * 供动态委托 hook 调用的预注入逻辑
      */
-    fun hook(xposedModule: XposedModule, cl: ClassLoader) {
-        if (cl.javaClass.name.contains("BootClassLoader")) return
-        if (!hookedClassLoaders.add(cl)) return
-        
-        module = xposedModule
-        
-        val islandPkg = "miui.systemui.dynamicisland"
-
-        // 尝试加载目标类，不成功则静默返回
-        val contentViewClass = runCatching { 
-            cl.loadClass("$islandPkg.window.content.DynamicIslandContentView")
-        }.getOrNull() ?: DynamicFinder.findClassByConstantString(cl, "$islandPkg.window.content", "DynamicIslandContentView") ?: return
-
+    fun handlePreInject(chain: Chain): Any? {
         runCatching {
-            val hookedMethods = mutableListOf<String>()
-            
-            // 查找并 Hook 所有名为 updateBigIslandView 的方法（处理不同版本的重载或协程实现）
-            contentViewClass.methods.filter { it.name == "updateBigIslandView" }.forEach { method ->
-                runCatching {
-                    module.deoptimize(method)
-                    module.hook(method).intercept(UpdateBigIslandHooker())
-                    hookedMethods.add("updateBigIslandView")
-                    HookLogger.i("HookIslandSpaceGateLyric","已注入超级岛(SpaceGate): $method")
-                }
+            val islandView = chain.thisObject as? ViewGroup ?: return@runCatching
+            val prefs = (module as HookEntry).prefs
+            if (!prefs.getBoolean(RootConstants.KEY_HOOK_ENABLE_SUPER_ISLAND, RootConstants.DEFAULT_HOOK_ENABLE_SUPER_ISLAND)) return chain.proceed()
+            val pkgName = activeIslandPkgNames[islandView]
+            val activePkg = LyriconDataBridge.activePackageName
+            val behavior = prefs.getInt(RootConstants.KEY_HOOK_ISLAND_BEHAVIOR_AFTER_PAUSE, RootConstants.DEFAULT_HOOK_ISLAND_BEHAVIOR_AFTER_PAUSE)
+
+            if (activePkg.isNullOrEmpty() || (!MediaMetadataHelper.isPackagePlaying(islandView.context, activePkg) && behavior == 0)) {
+                return@runCatching
             }
 
-            // 查找并 Hook 所有名为 calculateBigIslandWidth 的方法
-            contentViewClass.methods.filter { it.name == "calculateBigIslandWidth" }.forEach { method ->
-                runCatching {
-                    module.deoptimize(method)
-                    module.hook(method).intercept(PreInjectHooker())
-                    hookedMethods.add("calculateBigIslandWidth")
-                    HookLogger.i("HookIslandSpaceGateLyric","已注入超级岛(SpaceGate): $method")
-                }
-            }
-
-            // 初始化外圈光效处理中心
-            HookIslandGlow.init(module, cl)
-
-            if (hookedMethods.isNotEmpty()) {
-                isHookedSuccess = true
-                val methodsSummary = hookedMethods.distinct().joinToString(", ")
-                HookLogger.i("HookIslandSpaceGateLyric","SpaceGate 初始化完成。已注入超级岛: [$methodsSummary]")
+            if (pkgName != null && pkgName == activePkg) {
+                applySettings(islandView)
+                injectToSlot(islandView, "island_container_module_image_text_1", "HYPERLYRIC_LEFT_VIEW", prefs, pkgName)
+                injectToSlot(islandView, "island_container_module_image_text_2", "HYPERLYRIC_RIGHT_VIEW", prefs, pkgName)
+                linkViews(islandView)
             }
         }.onFailure { e ->
-            if (e !is ClassNotFoundException) {
-                HookLogger.e("HookIslandSpaceGateLyric", "SpaceGate 注入超级岛失败", e)
-            }
+            HookLogger.e("HookIslandSpaceGateLyric", "预注入超级岛失败", e)
         }
+        return chain.proceed()
     }
 
-    class PreInjectHooker : Hooker {
-        override fun intercept(chain: Chain): Any? {
-            runCatching {
-                val islandView = chain.thisObject as? ViewGroup ?: return@runCatching
-                val prefs = (module as HookEntry).prefs
-                if (!prefs.getBoolean(RootConstants.KEY_HOOK_ENABLE_SUPER_ISLAND, RootConstants.DEFAULT_HOOK_ENABLE_SUPER_ISLAND)) return chain.proceed()
-                val pkgName = activeIslandPkgNames[islandView]
-                val activePkg = LyriconDataBridge.activePackageName
-                val behavior = prefs.getInt(RootConstants.KEY_HOOK_ISLAND_BEHAVIOR_AFTER_PAUSE, RootConstants.DEFAULT_HOOK_ISLAND_BEHAVIOR_AFTER_PAUSE)
+    /**
+     * 供动态委托 hook 调用的更新逻辑
+     */
+    fun handleUpdateBigIsland(chain: Chain): Any? {
+        val result = chain.proceed()
+        runCatching {
+            val viewGroup = chain.thisObject as? ViewGroup ?: return@runCatching
+            val prefs = (module as HookEntry).prefs
+            if (!prefs.getBoolean(RootConstants.KEY_HOOK_ENABLE_SUPER_ISLAND, RootConstants.DEFAULT_HOOK_ENABLE_SUPER_ISLAND)) return result
 
-                if (activePkg.isNullOrEmpty() || (!MediaMetadataHelper.isPackagePlaying(islandView.context, activePkg) && behavior == 0)) {
-                    return@runCatching
+            val islandData = chain.args.getOrNull(0)
+            var pkgName = runCatching {
+                val getExtrasMethod = islandData?.javaClass?.methods?.find {
+                    it.name == "getExtras" && it.parameterTypes.isEmpty() && it.returnType.name.contains("Bundle")
                 }
+                val extras = getExtrasMethod?.invoke(islandData) as? android.os.Bundle
+                extras?.getString("miui.pkg.name")
+            }.getOrNull() ?: ""
 
-                if (pkgName != null && pkgName == activePkg) {
-                    applySettings(islandView)
-                    
-                    // SpaceGate 模式硬编码强制使用模式 8（歌词穿梭），不跟随内容设置
-                    injectToSlot(islandView, "island_container_module_image_text_1", "HYPERLYRIC_LEFT_VIEW", prefs, pkgName)
-                    injectToSlot(islandView, "island_container_module_image_text_2", "HYPERLYRIC_RIGHT_VIEW", prefs, pkgName)
-                    linkViews(islandView)
-                }
-            }.onFailure { e ->
-                HookLogger.e("HookIslandSpaceGateLyric", "预注入超级岛失败", e)
-            }
-            return chain.proceed()
-        }
-    }
-
-    class UpdateBigIslandHooker : Hooker {
-        override fun intercept(chain: Chain): Any? {
-            val result = chain.proceed()
-            runCatching {
-                val viewGroup = chain.thisObject as? ViewGroup ?: return@runCatching
-                val prefs = (module as HookEntry).prefs
-                if (!prefs.getBoolean(RootConstants.KEY_HOOK_ENABLE_SUPER_ISLAND, RootConstants.DEFAULT_HOOK_ENABLE_SUPER_ISLAND)) return result
-
-                val islandData = chain.args.getOrNull(0)
-                var pkgName = runCatching {
-                    val getExtrasMethod = islandData?.javaClass?.methods?.find { 
-                        it.name == "getExtras" && it.parameterTypes.isEmpty() && it.returnType.name.contains("Bundle")
-                    }
-                    val extras = getExtrasMethod?.invoke(islandData) as? android.os.Bundle
-                    extras?.getString("miui.pkg.name")
-                }.getOrNull() ?: ""
-                
-                if (pkgName.isNotEmpty()) {
-                    activeIslandPkgNames[viewGroup] = pkgName
-                } else {
-                    pkgName = activeIslandPkgNames[viewGroup] ?: ""
-                }
-
-                val activePkg = LyriconDataBridge.activePackageName
-                val behavior = prefs.getInt(RootConstants.KEY_HOOK_ISLAND_BEHAVIOR_AFTER_PAUSE, RootConstants.DEFAULT_HOOK_ISLAND_BEHAVIOR_AFTER_PAUSE)
-
-                if (activePkg.isNullOrEmpty() || (!MediaMetadataHelper.isPackagePlaying(viewGroup.context, activePkg) && behavior == 0)) {
-                    IslandViewHelper.clearInjectedViews(viewGroup)
-                    return@runCatching
-                }
-
-                if (pkgName.isEmpty() || pkgName != activePkg) {
-                    return@runCatching
-                }
-
-                activeContentView = java.lang.ref.WeakReference(viewGroup)
-
-                applySettings(viewGroup)
-                
-                // SpaceGate 模式硬编码强制使用模式 8（歌词穿梭），不跟随内容设置
-                injectToSlot(viewGroup, "island_container_module_image_text_1", "HYPERLYRIC_LEFT_VIEW", prefs, pkgName)
-                injectToSlot(viewGroup, "island_container_module_image_text_2", "HYPERLYRIC_RIGHT_VIEW", prefs, pkgName)
-                linkViews(viewGroup)
-
-                HookIslandGlow.injectAndTriggerGlow(viewGroup, islandData, prefs)
-            }.onFailure { e ->
-                HookLogger.e("HookIslandSpaceGateLyric", "更新超级岛视图失败", e)
+            if (pkgName.isNotEmpty()) {
+                activeIslandPkgNames[viewGroup] = pkgName
+            } else {
+                pkgName = activeIslandPkgNames[viewGroup] ?: ""
             }
 
-            return result
+            val activePkg = LyriconDataBridge.activePackageName
+            val behavior = prefs.getInt(RootConstants.KEY_HOOK_ISLAND_BEHAVIOR_AFTER_PAUSE, RootConstants.DEFAULT_HOOK_ISLAND_BEHAVIOR_AFTER_PAUSE)
+
+            if (activePkg.isNullOrEmpty() || (!MediaMetadataHelper.isPackagePlaying(viewGroup.context, activePkg) && behavior == 0)) {
+                IslandViewHelper.clearInjectedViews(viewGroup)
+                return@runCatching
+            }
+
+            if (pkgName.isEmpty() || pkgName != activePkg) {
+                return@runCatching
+            }
+
+            activeContentView = java.lang.ref.WeakReference(viewGroup)
+
+            applySettings(viewGroup)
+            injectToSlot(viewGroup, "island_container_module_image_text_1", "HYPERLYRIC_LEFT_VIEW", prefs, pkgName)
+            injectToSlot(viewGroup, "island_container_module_image_text_2", "HYPERLYRIC_RIGHT_VIEW", prefs, pkgName)
+            linkViews(viewGroup)
+
+            HookIslandGlow.injectAndTriggerGlow(viewGroup, islandData, prefs)
+        }.onFailure { e ->
+            HookLogger.e("HookIslandSpaceGateLyric", "更新超级岛视图失败", e)
         }
+
+        return result
     }
 
     private fun applySettings(rootView: ViewGroup) {
@@ -327,6 +264,22 @@ object HookIslandSpaceGateLyric : IslandRenderer {
         // 强行使用歌词模式获取样式
         val style = LyricStyleHelper.buildStyle(prefs, res, 7, null)
         view.setStyle(style)
+    }
+
+    override fun clearAllViews() {
+        val iterator = activeIslandPkgNames.entries.iterator()
+        while (iterator.hasNext()) {
+            val entry = iterator.next()
+            val cv = entry.key as? ViewGroup
+            if (cv != null && cv.isAttachedToWindow) {
+                cv.post {
+                    IslandViewHelper.clearInjectedViews(cv)
+                    IslandViewHelper.triggerSystemRelayout(cv)
+                }
+            } else {
+                iterator.remove()
+            }
+        }
     }
 
     override fun refreshActiveIsland() {

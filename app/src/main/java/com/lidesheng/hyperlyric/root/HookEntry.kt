@@ -2,6 +2,7 @@ package com.lidesheng.hyperlyric.root
 
 import com.lidesheng.hyperlyric.lyric.source.SourceManager
 import com.lidesheng.hyperlyric.root.bridge.IpcRouter
+import com.lidesheng.hyperlyric.root.source.IslandRenderer
 import com.lidesheng.hyperlyric.root.source.LyriconSource
 import com.lidesheng.hyperlyric.root.source.MediaSessionSource
 import com.lidesheng.hyperlyric.root.source.RootLyricSink
@@ -18,6 +19,7 @@ import io.github.libxposed.api.XposedModuleInterface.PackageLoadedParam
 class HookEntry : XposedModule() {
 
     companion object {
+        @Volatile
         var activeMode = 0
         val lyriconSource = LyriconSource()
         val superLyricSource = SuperLyricSource()
@@ -122,11 +124,7 @@ class HookEntry : XposedModule() {
             if (!isSuperIslandEnabled) {
                 return
             }
-            if (activeMode == 1) {
-                HookIslandSpaceGateLyric.hook(this, param.defaultClassLoader)
-            } else {
-                HookIslandLyric.hook(this, param.defaultClassLoader)
-            }
+            HookIslandLyric.hook(this, param.defaultClassLoader)
         }
     }
 
@@ -139,11 +137,7 @@ class HookEntry : XposedModule() {
             val cl = chain.thisObject as? ClassLoader ?: return result
             if (!prefs.getBoolean(RootConstants.KEY_HOOK_ENABLE_SUPER_ISLAND, RootConstants.DEFAULT_HOOK_ENABLE_SUPER_ISLAND)) return result
             try {
-                if (activeMode == 1) {
-                    HookIslandSpaceGateLyric.hook(this@HookEntry, cl)
-                } else {
-                    HookIslandLyric.hook(this@HookEntry, cl)
-                }
+                HookIslandLyric.hook(this@HookEntry, cl)
             } catch (e: Exception) {
                 if (e is ClassNotFoundException || e is NoSuchMethodException) {
                     // HookLogger.w("HookEntry","插件中未找到超级岛相关类")
@@ -163,11 +157,14 @@ class HookEntry : XposedModule() {
             val app = chain.thisObject as? android.app.Application
             if (app != null) {
                 try {
-                    val renderer = if (activeMode == 1) HookIslandSpaceGateLyric else HookIslandLyric
                     val entry = instance!!
+                    // 两个 renderer 的 module 都需要初始化（热切换时两个都会被用到）
+                    HookIslandLyric.module = entry
+                    HookIslandSpaceGateLyric.module = entry
+                    val renderer = if (activeMode == 1) HookIslandSpaceGateLyric else HookIslandLyric
                     val sink = RootLyricSink(renderer, entry.prefs)
 
-                    IpcRouter.initialize(app, renderer)
+                    IpcRouter.initialize(app)
 
                     lyriconSource.initialize(app, entry.prefs, activeMode)
                     superLyricSource.initialize(app)
@@ -184,15 +181,38 @@ class HookEntry : XposedModule() {
                     )
                     sourceManager?.start()
 
-                    entry.prefs.registerOnSharedPreferenceChangeListener { _, key ->
-                        if (key == RootConstants.KEY_HOOK_LYRIC_SOURCE) {
-                            val newSourceId = entry.prefs.getString(key, RootConstants.DEFAULT_HOOK_LYRIC_SOURCE) ?: RootConstants.DEFAULT_HOOK_LYRIC_SOURCE
-                            HookLogger.i("HookEntry", "歌词源切换: $newSourceId")
-                            android.os.Handler(android.os.Looper.getMainLooper()).post {
-                                sourceManager?.switchSource(newSourceId)
+                    val prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+                        when (key) {
+                            RootConstants.KEY_HOOK_LYRIC_SOURCE -> {
+                                val newSourceId = entry.prefs.getString(key, RootConstants.DEFAULT_HOOK_LYRIC_SOURCE) ?: RootConstants.DEFAULT_HOOK_LYRIC_SOURCE
+                                HookLogger.i("HookEntry", "歌词源切换: $newSourceId")
+                                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                    sourceManager?.switchSource(newSourceId)
+                                }
+                            }
+                            RootConstants.KEY_HOOK_LYRIC_MODE -> {
+                                val newMode = entry.prefs.getInt(key, RootConstants.DEFAULT_HOOK_LYRIC_MODE)
+                                if (newMode == activeMode) return@OnSharedPreferenceChangeListener
+                                HookLogger.i("HookEntry", "歌词模式切换: $newMode")
+                                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                    // 1. 清除旧视图
+                                    if (activeMode == 1) HookIslandSpaceGateLyric.clearAllViews() else HookIslandLyric.clearAllViews()
+                                    // 2. 传递 activeIslandPkgNames 到新 renderer
+                                    val oldPkgNames = if (activeMode == 1) HookIslandSpaceGateLyric.activeIslandPkgNames else HookIslandLyric.activeIslandPkgNames
+                                    val newPkgNames = if (newMode == 1) HookIslandSpaceGateLyric.activeIslandPkgNames else HookIslandLyric.activeIslandPkgNames
+                                    synchronized(oldPkgNames) { newPkgNames.putAll(oldPkgNames) }
+                                    // 3. 先更新 renderer 引用，再更新 activeMode（保证线程安全顺序）
+                                    val newRenderer: IslandRenderer = if (newMode == 1) HookIslandSpaceGateLyric else HookIslandLyric
+                                    lyriconSource.updateRenderer(newRenderer, newMode)
+                                    sink.updateRenderer(newRenderer)
+                                    activeMode = newMode
+                                    // 4. 新 renderer 注入视图
+                                    newRenderer.refreshActiveIsland()
+                                }
                             }
                         }
                     }
+                    entry.prefs.registerOnSharedPreferenceChangeListener(prefListener)
 
                     HookLogger.i("HookEntry", "歌词源 = ${sourceManager?.getActiveSource()?.displayName}")
                     HookLogger.i("HookEntry", "系统环境初始化完成")

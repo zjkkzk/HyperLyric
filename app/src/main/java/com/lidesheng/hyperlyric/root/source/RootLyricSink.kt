@@ -17,9 +17,14 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 class RootLyricSink(
-    private val renderer: IslandRenderer,
+    @Volatile
+    private var renderer: IslandRenderer,
     private val prefs: SharedPreferences? = null
 ) : LyricSink {
+
+    fun updateRenderer(newRenderer: IslandRenderer) {
+        this.renderer = newRenderer
+    }
 
     private val aiTransScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var activeAiTranslationJob: Job? = null

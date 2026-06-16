@@ -39,6 +39,7 @@ class LyriconSource : LyricSource {
     private var app: Application? = null
     private var prefs: SharedPreferences? = null
     private var activeMode: Int = 0
+    @Volatile
     private var renderer: IslandRenderer? = null
 
     @Volatile
@@ -88,6 +89,11 @@ class LyriconSource : LyricSource {
 
     private fun getRenderer(): IslandRenderer =
         renderer ?: if (activeMode == 1) HookIslandSpaceGateLyric else HookIslandLyric
+
+    fun updateRenderer(newRenderer: IslandRenderer, newMode: Int) {
+        this.renderer = newRenderer
+        this.activeMode = newMode
+    }
 
     private fun initializeSubscriber(app: Application) {
         AITranslator.init(app)

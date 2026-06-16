@@ -5,4 +5,5 @@ interface IslandRenderer {
     fun updateLyricLine()
     fun updatePosition(position: Long)
     fun onPlaybackStateChanged(isPlaying: Boolean)
+    fun clearAllViews()
 }

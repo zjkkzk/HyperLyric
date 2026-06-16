@@ -90,6 +90,7 @@ object HookIslandLyric : IslandRenderer {
 
     class PreInjectHooker : Hooker {
         override fun intercept(chain: Chain): Any? {
+            if (HookEntry.activeMode == 1) return HookIslandSpaceGateLyric.handlePreInject(chain)
             runCatching {
                 val islandView = chain.thisObject as? ViewGroup ?: return@runCatching
                 val prefs = (module as HookEntry).prefs
@@ -119,6 +120,7 @@ object HookIslandLyric : IslandRenderer {
 
     class UpdateBigIslandHooker : Hooker {
         override fun intercept(chain: Chain): Any? {
+            if (HookEntry.activeMode == 1) return HookIslandSpaceGateLyric.handleUpdateBigIsland(chain)
             val result = chain.proceed()
             runCatching {
                 val viewGroup = chain.thisObject as? ViewGroup ?: return@runCatching
@@ -376,6 +378,22 @@ object HookIslandLyric : IslandRenderer {
 
         val style = LyricStyleHelper.buildStyle(prefs, res, mode, albumBitmap)
         view.setStyle(style)
+    }
+
+    override fun clearAllViews() {
+        val iterator = activeIslandPkgNames.entries.iterator()
+        while (iterator.hasNext()) {
+            val entry = iterator.next()
+            val cv = entry.key as? ViewGroup
+            if (cv != null && cv.isAttachedToWindow) {
+                cv.post {
+                    IslandViewHelper.clearInjectedViews(cv)
+                    IslandViewHelper.triggerSystemRelayout(cv)
+                }
+            } else {
+                iterator.remove()
+            }
+        }
     }
 
     override fun refreshActiveIsland() {
