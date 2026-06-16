@@ -173,10 +173,6 @@ object HookIslandLyric : IslandRenderer {
     }
 
 
-    private fun triggerSystemRelayout(islandView: ViewGroup) {
-        IslandViewHelper.triggerSystemRelayout(islandView)
-    }
-
     private fun applySettings(rootView: ViewGroup) {
         val prefs = (module as HookEntry).prefs
         val showAlbum = prefs.getBoolean(RootConstants.KEY_HOOK_ISLAND_LEFT_ALBUM, RootConstants.DEFAULT_HOOK_ISLAND_LEFT_ALBUM)
@@ -290,12 +286,11 @@ object HookIslandLyric : IslandRenderer {
                 HookLogger.w("HookIslandLyric","设置 maxWidthPx 失败: ${e.message}")
             }
 
-            val richView = targetView ?: return
-            configureRichLyricView(richView, prefs, res, mode, albumBitmap)
+            configureRichLyricView(targetView, prefs, res, mode, albumBitmap)
             
             // 设置内边距和可见性，必须在 measure/layout 之前，否则会导致一帧的位移抖动
-            richView.setPadding((pL * density).toInt(), 0, (pR * density).toInt(), 0)
-            richView.visibility = View.VISIBLE
+            targetView.setPadding((pL * density).toInt(), 0, (pR * density).toInt(), 0)
+            targetView.visibility = View.VISIBLE
             wrapperView.visibility = View.VISIBLE
             
             val newLine = when(mode) {
@@ -318,11 +313,11 @@ object HookIslandLyric : IslandRenderer {
             }
 
             // 歌曲信息模式：内容未变化时跳过 line 赋值，避免跑马灯重置
-            val currentLine = richView.line
+            val currentLine = targetView.line
             val contentChanged = mode !in 1..6 || newLine == null || currentLine == null ||
                 currentLine.text != newLine.text || currentLine.secondary != newLine.secondary
             if (contentChanged) {
-                richView.line = newLine
+                targetView.line = newLine
             }
             HookLogger.d("HookIslandLyric","注入完成: mode=$mode, 标题=${singleModeText.take(20)}, 歌词=${(LyriconDataBridge.currentLyric ?: "").take(20)}")
 
@@ -332,7 +327,7 @@ object HookIslandLyric : IslandRenderer {
                 val mdDelay = prefs.getInt(RootConstants.KEY_HOOK_MARQUEE_METADATA_DELAY, RootConstants.DEFAULT_HOOK_MARQUEE_METADATA_DELAY)
                 val mdLoopDelay = prefs.getInt(RootConstants.KEY_HOOK_MARQUEE_METADATA_LOOP_DELAY, RootConstants.DEFAULT_HOOK_MARQUEE_METADATA_LOOP_DELAY)
                 val mdInfinite = prefs.getBoolean(RootConstants.KEY_HOOK_MARQUEE_METADATA_INFINITE, RootConstants.DEFAULT_HOOK_MARQUEE_METADATA_INFINITE)
-                richView.setMetadataMarqueeConfig(
+                targetView.setMetadataMarqueeConfig(
                     speed = mdSpeed,
                     initialDelay = mdDelay,
                     loopDelay = mdLoopDelay,
@@ -340,8 +335,8 @@ object HookIslandLyric : IslandRenderer {
                     stopAtEnd = true  // 歌曲信息始终在尾部停顿，无限循环时自动启用双行尾部同步
                 )
                 // 设置对端行宽度，用于双行尾部同步
-                richView.main.setPeerLineWidth(richView.secondary.lineWidth)
-                richView.secondary.setPeerLineWidth(richView.main.lineWidth)
+                targetView.main.setPeerLineWidth(targetView.secondary.lineWidth)
+                targetView.secondary.setPeerLineWidth(targetView.main.lineWidth)
             }
 
             // 强制隐藏原生容器中除我们 wrapperView 之外的所有原生文本视图
@@ -359,14 +354,14 @@ object HookIslandLyric : IslandRenderer {
             wrapperView.layout(0, 0, wrapperView.measuredWidth, wrapperView.measuredHeight)
 
             // 如果开启了跑马灯，请求开始滚动
-            richView.post {
+            targetView.post {
                 val shouldMarquee = if (mode in 1..6) {
                     prefs.getBoolean(RootConstants.KEY_HOOK_MARQUEE_METADATA_MODE, RootConstants.DEFAULT_HOOK_MARQUEE_METADATA_MODE)
                 } else {
                     prefs.getBoolean(RootConstants.KEY_HOOK_MARQUEE_MODE, RootConstants.DEFAULT_HOOK_MARQUEE_MODE)
                 }
                 if (shouldMarquee) {
-                    richView.requestStartMarquee()
+                    targetView.requestStartMarquee()
                 }
             }
         }
@@ -410,7 +405,7 @@ object HookIslandLyric : IslandRenderer {
                         val mediaInfo = MediaMetadataHelper.getMediaInfo(cv.context, pkgName, HookLogger)
                         HookIslandGlow.updateMusicGlow(mediaInfo.albumArt, prefs)
 
-                        triggerSystemRelayout(cv)
+                        IslandViewHelper.triggerSystemRelayout(cv)
                     }
                 }
             } else {
@@ -553,7 +548,7 @@ object HookIslandLyric : IslandRenderer {
                         if (cv != null && cv.isAttachedToWindow) {
                             cv.post {
                                 IslandViewHelper.clearInjectedViews(cv)
-                                triggerSystemRelayout(cv)
+                                IslandViewHelper.triggerSystemRelayout(cv)
                             }
                         } else {
                             iterator.remove()

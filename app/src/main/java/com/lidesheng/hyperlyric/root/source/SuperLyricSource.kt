@@ -72,6 +72,7 @@ class SuperLyricSource : LyricSource {
 
             override fun onStop(publisher: String, data: SuperLyricData) {
                 HookLogger.d(TAG, "收到停止事件, publisher=$publisher")
+                @Suppress("UNNECESSARY_SAFE_CALL")
                 sink?.onPlaybackStateChanged(false)
                 stopPositionPolling()
             }
@@ -122,6 +123,7 @@ class SuperLyricSource : LyricSource {
             if (lyric != null) {
                 val st = lyric.startTime
                 val et = lyric.endTime
+                @Suppress("DEPRECATION")
                 val dl = lyric.delay
                 val words = lyric.words
                 HookLogger.d(TAG, "歌词: text=${lyric.text}, start=$st, end=$et, delay=$dl, " +

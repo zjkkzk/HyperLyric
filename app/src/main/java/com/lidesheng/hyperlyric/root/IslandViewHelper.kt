@@ -73,11 +73,11 @@ object IslandViewHelper {
         rootView.findViewWithTag<View>("HYPERLYRIC_LEFT_VIEW_WRAPPER")?.visibility = View.GONE
         rootView.findViewWithTag<View>("HYPERLYRIC_RIGHT_VIEW")?.visibility = View.GONE
         rootView.findViewWithTag<View>("HYPERLYRIC_RIGHT_VIEW_WRAPPER")?.visibility = View.GONE
-        
+
         // 恢复系统原有组件的可见性
         toggleContainer(rootView, "island_container_module_image_text_1", "island_container_module_icon", true)
         toggleContainer(rootView, "island_container_module_image_text_2", "island_container_module_icon", true)
-        
+
         showOriginalTexts(rootView, "island_container_module_image_text_1")
         showOriginalTexts(rootView, "island_container_module_image_text_2")
     }
@@ -94,15 +94,13 @@ object IslandViewHelper {
             val parent = rootView.findViewById<ViewGroup>(slotId) ?: return
             
             val textSlotId = res.getIdentifier("island_container_module_text", "id", "miui.systemui.plugin")
-            val container = if (textSlotId != 0) parent.findViewById(textSlotId) ?: parent else parent
+            val container = if (textSlotId != 0) (parent.findViewById(textSlotId) ?: parent) else parent
 
-            if (container is ViewGroup) {
-                for (i in 0 until container.childCount) {
-                    val child = container.getChildAt(i)
-                    val tag = child.tag as? String ?: ""
-                    if (!tag.startsWith("HYPERLYRIC")) {
-                        child.visibility = View.VISIBLE
-                    }
+            for (i in 0 until container.childCount) {
+                val child = container.getChildAt(i)
+                val tag = child.tag as? String ?: ""
+                if (!tag.startsWith("HYPERLYRIC")) {
+                    child.visibility = View.VISIBLE
                 }
             }
         } catch (e: Exception) {

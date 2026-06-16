@@ -19,7 +19,7 @@ object DynamicFinder {
     ): Class<*>? {
         try {
             // 获取 BaseDexClassLoader 的 pathList
-            val pathListField = loader.javaClass.superclass.getDeclaredField("pathList")
+            val pathListField = loader.javaClass.superclass?.getDeclaredField("pathList") ?: return null
             pathListField.isAccessible = true
             val pathList = pathListField.get(loader)
 

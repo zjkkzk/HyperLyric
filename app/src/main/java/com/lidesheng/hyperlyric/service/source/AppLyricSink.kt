@@ -18,9 +18,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.conflate
 import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.launch
 import com.lidesheng.hyperlyric.common.RootConstants
 import com.lidesheng.hyperlyric.common.ServiceConstants
 import com.lidesheng.hyperlyric.common.UIConstants
@@ -52,7 +52,7 @@ class AppLyricSink(
 
     fun startCollecting(lyricUpdateFlow: Flow<SyncData>, newSongFlow: Flow<Unit>) {
         collectJob = scope.launch(Dispatchers.Default) {
-            lyricUpdateFlow.debounce(200.milliseconds).collectLatest { data -> processSyncData(data) }
+            lyricUpdateFlow.conflate().collectLatest { data -> processSyncData(data) }
         }
         scope.launch {
             newSongFlow.collect {

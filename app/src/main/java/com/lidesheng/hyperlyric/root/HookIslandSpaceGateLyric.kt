@@ -172,10 +172,6 @@ object HookIslandSpaceGateLyric : IslandRenderer {
         }
     }
 
-    private fun triggerSystemRelayout(islandView: ViewGroup) {
-        IslandViewHelper.triggerSystemRelayout(islandView)
-    }
-
     private fun applySettings(rootView: ViewGroup) {
         val prefs = (module as HookEntry).prefs
         val showAlbum = prefs.getBoolean(RootConstants.KEY_HOOK_ISLAND_LEFT_ALBUM, RootConstants.DEFAULT_HOOK_ISLAND_LEFT_ALBUM)
@@ -289,11 +285,10 @@ object HookIslandSpaceGateLyric : IslandRenderer {
             HookLogger.w("HookIslandSpaceGateLyric","设置 maxWidthPx 失败: ${e.message}")
         }
 
-        val richView = targetView ?: return
-        configureRichLyricView(richView, prefs, res)
+        configureRichLyricView(targetView, prefs, res)
         
-        richView.setPadding((pL * density).toInt(), 0, (pR * density).toInt(), 0)
-        richView.visibility = View.VISIBLE
+        targetView.setPadding((pL * density).toInt(), 0, (pR * density).toInt(), 0)
+        targetView.visibility = View.VISIBLE
         wrapperView.visibility = View.VISIBLE
         
         // 强制使用歌词穿梭内容（原本 mode 8 的逻辑）
@@ -303,7 +298,7 @@ object HookIslandSpaceGateLyric : IslandRenderer {
         } else if (TranslationHelper.isSwapTranslation(prefs)) {
             rawLine = TranslationHelper.swapTranslation(rawLine)
         }
-        richView.line = rawLine
+        targetView.line = rawLine
 
         for (i in 0 until container.childCount) {
             val child = container.getChildAt(i)
@@ -317,9 +312,9 @@ object HookIslandSpaceGateLyric : IslandRenderer {
         wrapperView.measure(msW, msH)
         wrapperView.layout(0, 0, wrapperView.measuredWidth, wrapperView.measuredHeight)
 
-        richView.post {
+        targetView.post {
             if (prefs.getBoolean(RootConstants.KEY_HOOK_MARQUEE_MODE, RootConstants.DEFAULT_HOOK_MARQUEE_MODE)) {
-                richView.requestStartMarquee()
+                targetView.requestStartMarquee()
             }
         }
     }
@@ -361,7 +356,7 @@ object HookIslandSpaceGateLyric : IslandRenderer {
                         val mediaInfo = MediaMetadataHelper.getMediaInfo(cv.context, pkgName, HookLogger)
                         HookIslandGlow.updateMusicGlow(mediaInfo.albumArt, prefs)
 
-                        triggerSystemRelayout(cv)
+                        IslandViewHelper.triggerSystemRelayout(cv)
                     }
                 }
             } else {
@@ -484,7 +479,7 @@ object HookIslandSpaceGateLyric : IslandRenderer {
                         if (cv != null && cv.isAttachedToWindow) {
                             cv.post {
                                 IslandViewHelper.clearInjectedViews(cv)
-                                triggerSystemRelayout(cv)
+                                IslandViewHelper.triggerSystemRelayout(cv)
                             }
                         } else {
                             iterator.remove()
@@ -497,5 +492,3 @@ object HookIslandSpaceGateLyric : IslandRenderer {
         }
     }
 }
-
-
