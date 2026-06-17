@@ -221,6 +221,7 @@ class SpaceGateRichLyricLineView(
         if (oldLine === line && line.isTitleLine()) return
         oldLine = line
 
+        assembler.updateFlags(displayTranslation, displayRoma, enableRelativeProgress, enableRelativeProgressHighlight)
         val mainResult = assembler.buildMain(line)
         main.setLyric(mainResult.line)
         main.isScrollOnly = mainResult.isScrollOnly

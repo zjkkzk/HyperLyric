@@ -17,6 +17,8 @@ import com.lidesheng.hyperlyric.root.utils.TranslationHelper
 import io.github.libxposed.api.XposedInterface.Chain
 import io.github.libxposed.api.XposedModule
 import com.lidesheng.hyperlyric.lyric.model.RichLyricLine
+import com.lidesheng.hyperlyric.lyric.model.interfaces.IRichLyricLine
+import com.lidesheng.hyperlyric.common.lyric.RichLyricLineSplitter
 import com.lidesheng.hyperlyric.lyric.view.SpaceGateRichLyricLineView
 import com.lidesheng.hyperlyric.lyric.view.yoyo.YoYoPresets
 import com.lidesheng.hyperlyric.lyric.view.yoyo.animateUpdate
@@ -97,8 +99,38 @@ object HookIslandSpaceGateLyric : IslandRenderer {
             activeContentView = java.lang.ref.WeakReference(viewGroup)
 
             applySettings(viewGroup)
-            injectToSlot(viewGroup, "island_container_module_image_text_1", "HYPERLYRIC_LEFT_VIEW", prefs, pkgName)
-            injectToSlot(viewGroup, "island_container_module_image_text_2", "HYPERLYRIC_RIGHT_VIEW", prefs, pkgName)
+
+            // 分割歌词为左右两部分
+            val songName = LyriconDataBridge.currentSongName?.takeIf { it.isNotEmpty() } ?: ""
+            var rawLine = LyriconDataBridge.currentLyricLine ?: RichLyricLine(text = songName, words = emptyList())
+            if (TranslationHelper.isTranslationOnly(prefs)) {
+                rawLine = TranslationHelper.applyTranslationOnly(rawLine)
+            } else if (TranslationHelper.isSwapTranslation(prefs)) {
+                rawLine = TranslationHelper.swapTranslation(rawLine)
+            }
+
+            val splitResult = if (rawLine.text.isNullOrEmpty()) {
+                null
+            } else {
+                val density = viewGroup.resources.displayMetrics.density
+                val leftMaxDp = prefs.getInt(RootConstants.KEY_HOOK_ISLAND_LEFT_CONTENT_MAX_WIDTH, RootConstants.DEFAULT_HOOK_ISLAND_LEFT_CONTENT_MAX_WIDTH)
+                val leftMaxPx = leftMaxDp * density
+                val textPaint = android.text.TextPaint().apply {
+                    textSize = prefs.getInt(RootConstants.KEY_HOOK_TEXT_SIZE, RootConstants.DEFAULT_HOOK_TEXT_SIZE).toFloat() * density
+                }
+                val centerLyric = prefs.getBoolean(RootConstants.KEY_HOOK_CENTER_LYRIC, RootConstants.DEFAULT_HOOK_CENTER_LYRIC)
+                val splitPx = if (centerLyric) {
+                    val textWidth = textPaint.measureText(rawLine.text)
+                    (textWidth / 2f).coerceAtMost(leftMaxPx)
+                } else {
+                    leftMaxPx
+                }
+                val textSizeRatio = prefs.getFloat(RootConstants.KEY_HOOK_TEXT_SIZE_RATIO, RootConstants.DEFAULT_HOOK_TEXT_SIZE_RATIO)
+                RichLyricLineSplitter.split(rawLine, textPaint, splitPx, textSizeRatio, centerLyric)
+            }
+
+            injectToSlot(viewGroup, "island_container_module_image_text_1", "HYPERLYRIC_LEFT_VIEW", prefs, pkgName, splitResult?.left)
+            injectToSlot(viewGroup, "island_container_module_image_text_2", "HYPERLYRIC_RIGHT_VIEW", prefs, pkgName, splitResult?.right)
             linkViews(viewGroup)
 
             HookIslandGlow.injectAndTriggerGlow(viewGroup, islandData, prefs)
@@ -131,10 +163,13 @@ object HookIslandSpaceGateLyric : IslandRenderer {
     private fun linkViews(rootView: ViewGroup) {
         val leftView = rootView.findViewWithTag<SpaceGateRichLyricLineView>("HYPERLYRIC_LEFT_VIEW")
         val rightView = rootView.findViewWithTag<SpaceGateRichLyricLineView>("HYPERLYRIC_RIGHT_VIEW")
-        
-        leftView?.setSpaceGateConfig(isRightSide = false, sibling = rightView)
-        rightView?.setSpaceGateConfig(isRightSide = true, sibling = leftView)
-        
+
+        // 字符串分割模式：每个视图独立渲染，不需要 sibling 同步
+        leftView?.main?.spaceGateEnabled = false
+        leftView?.secondary?.spaceGateEnabled = false
+        rightView?.main?.spaceGateEnabled = false
+        rightView?.secondary?.spaceGateEnabled = false
+
         if (!loggedCutoutInfo && leftView != null && rightView != null) {
             val cutoutView = IslandViewHelper.findViewByName(rootView, "area_cutout")
             if (cutoutView != null) {
@@ -149,7 +184,11 @@ object HookIslandSpaceGateLyric : IslandRenderer {
     }
 
     @SuppressLint("DiscouragedApi")
-    private fun injectToSlot(rootView: ViewGroup, parentName: String, tag: String, prefs: SharedPreferences, pkgName: String) {
+    private fun injectToSlot(rootView: ViewGroup, parentName: String, tag: String, prefs: SharedPreferences, pkgName: String, lineOverride: IRichLyricLine? = null) {
+        injectToSlotInternal(rootView, parentName, tag, prefs, pkgName, lineOverride)
+    }
+
+    private fun injectToSlotInternal(rootView: ViewGroup, parentName: String, tag: String, prefs: SharedPreferences, pkgName: String, lineOverride: IRichLyricLine? = null) {
         val res = rootView.resources
         val density = res.displayMetrics.density
         val parent = IslandViewHelper.findViewByName(rootView, parentName) as? ViewGroup ?: return
@@ -158,7 +197,7 @@ object HookIslandSpaceGateLyric : IslandRenderer {
         var targetView = container.findViewWithTag<SpaceGateRichLyricLineView>(tag)
 
         val isLeft = parentName.contains("1")
-        val maxWidthDp = if (isLeft) prefs.getInt(RootConstants.KEY_HOOK_ISLAND_LEFT_CONTENT_MAX_WIDTH, RootConstants.DEFAULT_HOOK_ISLAND_LEFT_CONTENT_MAX_WIDTH)
+        var maxWidthDp = if (isLeft) prefs.getInt(RootConstants.KEY_HOOK_ISLAND_LEFT_CONTENT_MAX_WIDTH, RootConstants.DEFAULT_HOOK_ISLAND_LEFT_CONTENT_MAX_WIDTH)
                          else prefs.getInt(RootConstants.KEY_HOOK_ISLAND_RIGHT_CONTENT_MAX_WIDTH, RootConstants.DEFAULT_HOOK_ISLAND_RIGHT_CONTENT_MAX_WIDTH)
         val pL = if (isLeft) prefs.getInt(RootConstants.KEY_HOOK_ISLAND_LEFT_PADDING_LEFT, RootConstants.DEFAULT_HOOK_ISLAND_LEFT_PADDING_LEFT)
                  else prefs.getInt(RootConstants.KEY_HOOK_ISLAND_RIGHT_PADDING_LEFT, RootConstants.DEFAULT_HOOK_ISLAND_RIGHT_PADDING_LEFT)
@@ -196,7 +235,7 @@ object HookIslandSpaceGateLyric : IslandRenderer {
                 gravity = Gravity.CENTER_VERTICAL
             })
             
-            container.addView(wrapperView, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT).apply {
+            container.addView(wrapperView, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.MATCH_PARENT).apply {
                 gravity = Gravity.CENTER_VERTICAL
             })
         } else {
@@ -212,13 +251,12 @@ object HookIslandSpaceGateLyric : IslandRenderer {
             }
         }
 
+        // 设置 wrapper 的最大宽度限制
         try {
             val maxField = wrapperView.javaClass.getDeclaredField("maxWidthPx")
             maxField.isAccessible = true
             maxField.setInt(wrapperView, (maxWidthDp * density).toInt())
-        } catch (e: Exception) {
-            HookLogger.w("HookIslandSpaceGateLyric","设置 maxWidthPx 失败: ${e.message}")
-        }
+        } catch (_: Exception) {}
 
         configureRichLyricView(targetView, prefs, res)
         
@@ -226,13 +264,16 @@ object HookIslandSpaceGateLyric : IslandRenderer {
         targetView.visibility = View.VISIBLE
         wrapperView.visibility = View.VISIBLE
         
-        // 强制使用歌词穿梭内容（原本 mode 8 的逻辑）
-        val songName = LyriconDataBridge.currentSongName?.takeIf { it.isNotEmpty() } ?: ""
-        var rawLine = LyriconDataBridge.currentLyricLine ?: RichLyricLine(text = songName, words = emptyList())
-        if (TranslationHelper.isTranslationOnly(prefs)) {
-            rawLine = TranslationHelper.applyTranslationOnly(rawLine)
-        } else if (TranslationHelper.isSwapTranslation(prefs)) {
-            rawLine = TranslationHelper.swapTranslation(rawLine)
+        // 使用分割后的歌词行，或从数据桥获取
+        val rawLine = lineOverride ?: run {
+            val songName = LyriconDataBridge.currentSongName?.takeIf { it.isNotEmpty() } ?: ""
+            var line = LyriconDataBridge.currentLyricLine ?: RichLyricLine(text = songName, words = emptyList())
+            if (TranslationHelper.isTranslationOnly(prefs)) {
+                line = TranslationHelper.applyTranslationOnly(line)
+            } else if (TranslationHelper.isSwapTranslation(prefs)) {
+                line = TranslationHelper.swapTranslation(line)
+            }
+            line
         }
         targetView.line = rawLine
 
@@ -242,7 +283,7 @@ object HookIslandSpaceGateLyric : IslandRenderer {
                 child.visibility = View.GONE
             }
         }
-        
+
         val msW = View.MeasureSpec.makeMeasureSpec((maxWidthDp * density).toInt(), View.MeasureSpec.AT_MOST)
         val msH = View.MeasureSpec.makeMeasureSpec(container.height, if (container.height > 0) View.MeasureSpec.EXACTLY else View.MeasureSpec.UNSPECIFIED)
         wrapperView.measure(msW, msH)
@@ -330,8 +371,38 @@ object HookIslandSpaceGateLyric : IslandRenderer {
             if (cv != null && cv.isAttachedToWindow) {
                 if (pkgName == activePkg) {
                     val prefs = (module as HookEntry).prefs
-                    updateLyricInSlot(cv, "HYPERLYRIC_LEFT_VIEW", prefs)
-                    updateLyricInSlot(cv, "HYPERLYRIC_RIGHT_VIEW", prefs)
+
+                    // 分割歌词为左右两部分（先应用翻译模式再分割）
+                    var rawLine = LyriconDataBridge.currentLyricLine
+                    if (rawLine != null) {
+                        if (TranslationHelper.isTranslationOnly(prefs)) {
+                            rawLine = TranslationHelper.applyTranslationOnly(rawLine)
+                        } else if (TranslationHelper.isSwapTranslation(prefs)) {
+                            rawLine = TranslationHelper.swapTranslation(rawLine)
+                        }
+                    }
+                    val splitResult = if (rawLine != null && !rawLine.text.isNullOrEmpty()) {
+                        val density = cv.resources.displayMetrics.density
+                        val leftMaxDp = prefs.getInt(RootConstants.KEY_HOOK_ISLAND_LEFT_CONTENT_MAX_WIDTH, RootConstants.DEFAULT_HOOK_ISLAND_LEFT_CONTENT_MAX_WIDTH)
+                        val leftMaxPx = leftMaxDp * density
+                        val textPaint = android.text.TextPaint().apply {
+                            textSize = prefs.getInt(RootConstants.KEY_HOOK_TEXT_SIZE, RootConstants.DEFAULT_HOOK_TEXT_SIZE).toFloat() * density
+                        }
+                        val centerLyric = prefs.getBoolean(RootConstants.KEY_HOOK_CENTER_LYRIC, RootConstants.DEFAULT_HOOK_CENTER_LYRIC)
+                        val splitPx = if (centerLyric) {
+                            val textWidth = textPaint.measureText(rawLine.text!!)
+                            (textWidth / 2f).coerceAtMost(leftMaxPx)
+                        } else {
+                            leftMaxPx
+                        }
+                        val textSizeRatio = prefs.getFloat(RootConstants.KEY_HOOK_TEXT_SIZE_RATIO, RootConstants.DEFAULT_HOOK_TEXT_SIZE_RATIO)
+                        RichLyricLineSplitter.split(rawLine, textPaint, splitPx, textSizeRatio, centerLyric)
+                    } else {
+                        null
+                    }
+
+                    updateLyricInSlot(cv, "HYPERLYRIC_LEFT_VIEW", prefs, splitResult?.left)
+                    updateLyricInSlot(cv, "HYPERLYRIC_RIGHT_VIEW", prefs, splitResult?.right)
                 }
             } else {
                 iterator.remove()
@@ -339,19 +410,21 @@ object HookIslandSpaceGateLyric : IslandRenderer {
         }
     }
 
-    private fun updateLyricInSlot(cv: ViewGroup, tag: String, prefs: SharedPreferences) {
+    private fun updateLyricInSlot(cv: ViewGroup, tag: String, prefs: SharedPreferences, lineOverride: IRichLyricLine? = null) {
         val view = cv.findViewWithTag<SpaceGateRichLyricLineView>(tag) ?: return
-        val rawLine = LyriconDataBridge.currentLyricLine
-        val targetLine = if (rawLine != null) {
-            if (TranslationHelper.isTranslationOnly(prefs)) {
-                TranslationHelper.applyTranslationOnly(rawLine)
-            } else if (TranslationHelper.isSwapTranslation(prefs)) {
-                TranslationHelper.swapTranslation(rawLine)
+        val targetLine = lineOverride ?: run {
+            val rawLine = LyriconDataBridge.currentLyricLine
+            if (rawLine != null) {
+                if (TranslationHelper.isTranslationOnly(prefs)) {
+                    TranslationHelper.applyTranslationOnly(rawLine)
+                } else if (TranslationHelper.isSwapTranslation(prefs)) {
+                    TranslationHelper.swapTranslation(rawLine)
+                } else {
+                    rawLine
+                }
             } else {
-                rawLine
+                null
             }
-        } else {
-            null
         }
 
         cv.post {
