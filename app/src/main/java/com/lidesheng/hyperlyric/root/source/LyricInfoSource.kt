@@ -56,7 +56,6 @@ class LyricInfoSource(private val context: Context) : LyricSource {
 
     override fun stop() {
         positionJob?.cancel()
-        positionJob_supervisor.cancel()
         try { manager.removeOnActiveSessionsChangedListener(sessionListener) } catch (_: Exception) {}
         trackedControllers.forEach { (ctrl, cb) ->
             try { ctrl.unregisterCallback(cb) } catch (_: Exception) {}

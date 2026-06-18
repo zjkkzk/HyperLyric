@@ -100,6 +100,7 @@ class SuperLyricSource : LyricSource {
             }
         }
         receiver = null
+        sink?.onStop()
         sink = null
         HookLogger.i(TAG, "数据源已停止")
     }
