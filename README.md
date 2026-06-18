@@ -17,7 +17,7 @@
 | xposed 超级岛歌词 | Android 15+ | HyperOS 3 |
 | xposed 移除焦点通知白名单 | Android 13+  | HyperOS 2、HyperOS 3 |
 | xposed 移除媒体超级岛下拉白名单 | Android 16 | HyperOS 3.0.300+ |
-| Live upadte 安卓实时通知歌词 | Android 16 | HyperOS 3.0.300+、ColorOS 16 |
+| Live update 安卓实时通知歌词 | Android 16 | HyperOS 3.0.300+、ColorOS 16 |
 |Notification Spotlight 小米焦点通知歌词 | Android 13+ | HyperOS 2、HyperOS 3 |
 
 ## 📸 截图
@@ -38,4 +38,6 @@
 ## 📎 项目引用与参考
 - [miuix](https://github.com/compose-miuix-ui/miuix)
 - [lyricon](https://github.com/tomakino/lyricon)
+- [SuperLyric](https://github.com/HChenX/SuperLyric)
+- [LyricInfo](https://github.com/limczhh/LyricInfo)
 - 以及很多没列出的项目，感谢

@@ -22,7 +22,8 @@ object LicenseProvider {
             LicenseItem("Capsulyric", "FrancoGiudans", "https://github.com/FrancoGiudans/Capsulyric"),
             LicenseItem("InstallerX-Revived", "wxxsfxyzm", "https://github.com/wxxsfxyzm/InstallerX-Revived"),
             LicenseItem("SuperLyric", "HChenX", "https://github.com/HChenX/SuperLyric"),
-            LicenseItem("SuperLyricApi", "HChenX", "https://github.com/HChenX/SuperLyricApi")
+            LicenseItem("SuperLyricApi", "HChenX", "https://github.com/HChenX/SuperLyricApi"),
+            LicenseItem("LyricInfo", "lidesheng", "https://github.com/limczhh/LyricInfo")
         )
     }
 }

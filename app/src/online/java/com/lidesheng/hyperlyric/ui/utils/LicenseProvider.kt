@@ -23,6 +23,7 @@ object LicenseProvider {
             LicenseItem("InstallerX-Revived", "wxxsfxyzm", "https://github.com/wxxsfxyzm/InstallerX-Revived"),
             LicenseItem("SuperLyric", "HChenX", "https://github.com/HChenX/SuperLyric"),
             LicenseItem("SuperLyricApi", "HChenX", "https://github.com/HChenX/SuperLyricApi"),
+            LicenseItem("LyricInfo", "lidesheng", "https://github.com/limczhh/LyricInfo"),
 
             // 联网版特有
             LicenseItem("retrofit", "square", "https://github.com/square/retrofit"),
