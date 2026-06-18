@@ -72,14 +72,14 @@ object HookIslandGlow {
 
             if (!extractEnabled) return
 
-            val colors = CoverColorHelper.getCachedColors()?.second
-            val mainColor = colors?.firstOrNull() ?: return
-
             val view = chain.thisObject as? View ?: return
 
             // 校验：当前岛是否是正在播放的音乐 App
             val pkgName = getPkgNameFromView(view)
             if (pkgName.isEmpty() || pkgName != LyriconDataBridge.activePackageName) return
+
+            val colors = CoverColorHelper.getCachedColors()?.second
+            val mainColor = colors?.firstOrNull() ?: return
 
             // 获取 template 字段
             val templateField = findFieldInHierarchy(view.javaClass, "template") ?: return
@@ -143,7 +143,7 @@ object HookIslandGlow {
             RootConstants.KEY_HOOK_ISLAND_GLOW_EXTRACT_COLOR,
             RootConstants.DEFAULT_HOOK_ISLAND_GLOW_EXTRACT_COLOR
         )
-        if (albumArt != null && enabled && CoverColorHelper.getCachedColors() == null) {
+        if (albumArt != null && enabled) {
             CoverColorHelper.extractColors(albumArt, false)
         }
     }

@@ -121,6 +121,20 @@ object HookIslandLyric : IslandRenderer {
     class UpdateBigIslandHooker : Hooker {
         override fun intercept(chain: Chain): Any? {
             if (HookEntry.activeMode == 1) return HookIslandSpaceGateLyric.handleUpdateBigIsland(chain)
+
+            // 在 chain.proceed() 之前提取颜色缓存（proceed 会触发 updateTemplate hook）
+            runCatching {
+                val viewGroup = chain.thisObject as? ViewGroup
+                val prefs = (module as? HookEntry)?.prefs
+                if (viewGroup != null && prefs != null && prefs.getBoolean(RootConstants.KEY_HOOK_ENABLE_SUPER_ISLAND, RootConstants.DEFAULT_HOOK_ENABLE_SUPER_ISLAND)) {
+                    val activePkg = LyriconDataBridge.activePackageName
+                    if (!activePkg.isNullOrEmpty()) {
+                        val mediaInfo = MediaMetadataHelper.getMediaInfo(viewGroup.context, activePkg)
+                        HookIslandGlow.updateMusicGlow(mediaInfo.albumArt, prefs)
+                    }
+                }
+            }
+
             val result = chain.proceed()
             runCatching {
                 val viewGroup = chain.thisObject as? ViewGroup ?: return@runCatching
